@@ -8,10 +8,12 @@ Return ONLY a JSON object (no markdown, no code block):
   "title": string (e.g. "Ordering Coffee"),
   "aiRole": string (the role AI plays, e.g. "Barista"),
   "userRole": string (the role user plays, e.g. "Customer"),
-  "topic": string (topic category)
+  "topic": string (topic category),
+  "level": string (echo the requested CEFR level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2")
 }
 Vary the scenarios. Choose from: daily-life, shopping, dining, travel, workplace, health, education, social, emergency, phone-call.
-Make scenarios realistic and useful for daily English communication.`;
+Make scenarios realistic and useful for daily English communication.
+Adjust dialogue complexity to match the requested CEFR level.`;
 
 const CHAT_PROMPT = `You are playing a role in an English conversation practice. Follow these rules strictly:
 1. STAY IN CHARACTER as "{aiRole}" at all times.

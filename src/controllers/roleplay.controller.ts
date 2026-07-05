@@ -18,7 +18,7 @@ export async function createConversation(req: Request, res: Response): Promise<v
       title: scenario.title,
       aiRole: scenario.aiRole,
       userRole: scenario.userRole,
-      level: scenario.level || level || 'intermediate',
+      level: scenario.level || level || 'B1',
       topic: scenario.topic || topic || 'daily-life',
       messages: [],
     });
