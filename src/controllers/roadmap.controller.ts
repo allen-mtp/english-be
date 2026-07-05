@@ -8,12 +8,12 @@ import { updateStreak } from '../services/streak.service';
 
 export async function generateRoadmap(req: Request, res: Response): Promise<void> {
   try {
-    const { level, goal, dailyMinutes } = req.body;
+    const { level, goal, dailyMinutes, topic } = req.body;
     const userLevel = level || 'intermediate';
     const userGoal = goal || 'communication';
     const userMinutes = dailyMinutes || 30;
 
-    const roadmap = await roadmapService.generate(getUserId(req), userLevel, userGoal, userMinutes);
+    const roadmap = await roadmapService.generate(getUserId(req), userLevel, userGoal, userMinutes, topic);
     res.status(201).json({ roadmap });
   } catch (error: any) {
     console.error('generateRoadmap error:', error);

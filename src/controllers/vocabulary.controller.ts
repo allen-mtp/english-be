@@ -10,13 +10,13 @@ import { updateStreak } from '../services/streak.service';
 
 export async function generateVocabulary(req: Request, res: Response): Promise<void> {
   try {
-    const { word } = req.body;
+    const { word, topic } = req.body;
     if (!word) {
       res.status(400).json({ error: 'Word is required' });
       return;
     }
 
-    const vocabulary = await vocabularyService.generateSingle(getUserId(req), word);
+    const vocabulary = await vocabularyService.generateSingle(getUserId(req), word, topic);
     await updateStreak(getUserId(req));
 
     await LearningLog.create({
@@ -37,13 +37,13 @@ export async function generateVocabulary(req: Request, res: Response): Promise<v
 
 export async function generateBatchVocabularies(req: Request, res: Response): Promise<void> {
   try {
-    const { words } = req.body;
+    const { words, topic } = req.body;
     if (!Array.isArray(words) || words.length === 0) {
       res.status(400).json({ error: 'Words array is required' });
       return;
     }
 
-    const vocabularies = await vocabularyService.generateBatch(getUserId(req), words);
+    const vocabularies = await vocabularyService.generateBatch(getUserId(req), words, topic);
     await updateStreak(getUserId(req));
 
     const xp = vocabularies.length * calculateXP('NEW_WORD');

@@ -30,8 +30,9 @@ Intermediate (B1-B2): work communication → meetings → travel → culture →
 Advanced (C1-C2): idioms → business strategy → debates → persuasion → nuanced expressions → professional writing`;
 
 export class RoadmapService {
-  async generate(userId: string, level: string, goal: string, dailyMinutes: number) {
+  async generate(userId: string, level: string, goal: string, dailyMinutes: number, topic?: string) {
     const userPrompt = `Student level: ${level}, Goal: ${goal}, Daily study time: ${dailyMinutes} minutes.
+${topic ? `Focus area / interest: "${topic}" — tailor vocabulary, conversations, and themes around this topic across the 7 days.` : ''}
 Create a 7-day learning roadmap.`;
 
     const lessons = await aiService.generateJSON<IDailyLesson[]>(ROADMAP_SYSTEM_PROMPT, userPrompt, 16384);
@@ -40,7 +41,7 @@ Create a 7-day learning roadmap.`;
 
     const roadmap = await Roadmap.create({
       userId,
-      name: `Roadmap - ${level} - ${goal}`,
+      name: `Roadmap - ${level} - ${goal}${topic ? ` - ${topic}` : ''}`,
       level,
       goal,
       dailyMinutes,

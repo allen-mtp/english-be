@@ -9,7 +9,7 @@ import { updateStreak } from '../services/streak.service';
 
 export async function generateQuiz(req: Request, res: Response): Promise<void> {
   try {
-    const { type = 'practice', category = 'mixed', level = 'B1', questionCount = 10 } = req.body;
+    const { type = 'practice', category = 'mixed', level = 'B1', questionCount = 10, topic } = req.body;
 
     const quiz = await quizService.generate(
       getUserId(req),
@@ -17,6 +17,7 @@ export async function generateQuiz(req: Request, res: Response): Promise<void> {
       category,
       level,
       questionCount,
+      topic,
     );
 
     res.status(201).json({ quiz });

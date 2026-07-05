@@ -36,8 +36,8 @@ export interface VocabularyInput {
 }
 
 export class VocabularyService {
-  async generateSingle(userId: string, word: string) {
-    const userPrompt = `Generate vocabulary for the word: "${word}"`;
+  async generateSingle(userId: string, word: string, topic?: string) {
+    const userPrompt = `Generate vocabulary for the word: "${word}"${topic ? `\nContext/topic to relate examples and meaning to: "${topic}"` : ''}`;
     const data = await aiService.generateJSON<VocabularyInput>(VOCABULARY_SYSTEM_PROMPT, userPrompt);
 
     const existing = await Vocabulary.findOne({ word: data.word });
@@ -54,8 +54,8 @@ export class VocabularyService {
     return vocabulary;
   }
 
-  async generateBatch(userId: string, words: string[]) {
-    const userPrompt = `Generate vocabulary for these words: ${JSON.stringify(words)}`;
+  async generateBatch(userId: string, words: string[], topic?: string) {
+    const userPrompt = `Generate vocabulary for these words: ${JSON.stringify(words)}${topic ? `\nContext/topic to relate examples and meanings to: "${topic}"` : ''}`;
     const dataArray = await aiService.generateJSON<VocabularyInput[]>(VOCABULARY_SYSTEM_PROMPT, userPrompt);
 
     const results = [];

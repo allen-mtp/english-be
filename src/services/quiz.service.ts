@@ -38,6 +38,7 @@ export class QuizService {
     category: 'mixed' | 'vocabulary' | 'grammar' | 'listening' | 'reading' = 'mixed',
     level: string = 'B1',
     questionCount: number = 10,
+    topic?: string,
   ) {
     let levelInstruction = level;
     if (type === 'placement') {
@@ -48,10 +49,11 @@ export class QuizService {
 Category: ${category}
 Level: ${levelInstruction}
 Number of questions: ${questionCount}
+${topic ? `Topic/Theme: "${topic}" — make all questions revolve around this theme.` : ''}
 
 ${type === 'placement' ? 'Start with A1 questions and progressively increase difficulty to C2.' : ''}
 ${type === 'achievement' ? `Focus on ${level} level topics and skills.` : ''}
-${category !== 'mixed' ? `Focus only on ${category} questions.` : ''}`;
+${!topic && category !== 'mixed' ? `Focus only on ${category} questions.` : ''}`;
 
     const data = await aiService.generateJSON<any>(QUIZ_SYSTEM_PROMPT, userPrompt, 12288);
 
