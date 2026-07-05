@@ -16,7 +16,38 @@ Return ONLY valid JSON (no markdown, no code block):
 Score each word based on phoneme accuracy. Missing/extra words = 0 score.
 Feedback in Vietnamese, encouraging and specific.`;
 
+const GENERATE_SENTENCES_SYSTEM_PROMPT = `You are an English teaching assistant. Generate sentences for pronunciation practice.
+Return ONLY valid JSON (no markdown, no code block):
+{
+  "topic": string,
+  "level": string,
+  "sentences": [
+    {"text": string, "translation": string}
+  ]
+}
+Generate 5 sentences appropriate for the given CEFR level and topic.
+Sentences should range from short and simple to slightly longer.
+Each sentence must include a Vietnamese translation.
+Vary the sentence structures and vocabulary.`;
+
 export class PronunciationService {
+  async generateSentences(topic: string, level: string): Promise<{ topic: string; level: string; sentences: { text: string; translation: string }[] }> {
+    const userPrompt = `Topic: "${topic}"
+Level: "${level}"
+Generate 5 sentences for pronunciation practice.`;
+
+    const result = await aiService.generateJSON<{ topic: string; level: string; sentences: { text: string; translation: string }[] }>(
+      GENERATE_SENTENCES_SYSTEM_PROMPT,
+      userPrompt,
+    );
+
+    return {
+      topic: result.topic || topic,
+      level: result.level || level,
+      sentences: (result.sentences || []).slice(0, 5),
+    };
+  }
+
   async score(
     userId: string,
     audioBuffer: Buffer,

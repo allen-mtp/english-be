@@ -6,6 +6,21 @@ import { LearningLog } from '../models/LearningLog';
 import { calculateXP } from '../services/xp.service';
 import { updateStreak } from '../services/streak.service';
 
+export async function generateSentences(req: Request, res: Response): Promise<void> {
+  try {
+    const { topic, level } = req.body;
+    if (!topic || !level) {
+      res.status(400).json({ error: 'topic and level are required' });
+      return;
+    }
+    const result = await pronunciationService.generateSentences(topic, level);
+    res.status(201).json(result);
+  } catch (error: any) {
+    console.error('generateSentences error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+}
+
 export async function scorePronunciation(req: Request, res: Response): Promise<void> {
   try {
     const { text } = req.body;

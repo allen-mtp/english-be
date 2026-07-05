@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { aiLimiter } from '../middleware/rateLimiter';
 import {
+  generateSentences,
   scorePronunciation,
   getPronunciationHistory,
   getPronunciationById,
@@ -24,6 +25,7 @@ const upload = multer({
   },
 });
 
+router.post('/generate', aiLimiter, generateSentences);
 router.post('/score', aiLimiter, upload.single('audio'), scorePronunciation);
 router.get('/history', getPronunciationHistory);
 router.get('/:id', getPronunciationById);
