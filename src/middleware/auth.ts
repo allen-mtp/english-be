@@ -9,16 +9,16 @@ export interface AuthToken {
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   try {
-    const token = req.cookies?.[config.cookieName] || extractBearerToken(req);
+    const token = req.cookies?.[config.accessTokenCookie] || extractBearerToken(req);
     if (!token) {
-      res.status(401).json({ error: 'Authentication required' });
+      res.status(401).json({ error: 'Authentication required', code: 'NO_TOKEN' });
       return;
     }
     const payload = jwt.verify(token, config.jwtSecret) as AuthToken;
     req.user = { id: payload.id, username: payload.username };
     next();
   } catch (err) {
-    res.status(401).json({ error: 'Invalid or expired session' });
+    res.status(401).json({ error: 'Invalid or expired session', code: 'TOKEN_EXPIRED' });
   }
 }
 

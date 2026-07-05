@@ -1,17 +1,35 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { User, IUser } from '../models/User';
 import { config } from '../config';
 
 export interface AuthResult {
   user: IUser;
-  token: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
-function signToken(user: IUser): string {
+export interface RefreshResult {
+  user: IUser;
+  accessToken: string;
+  refreshToken: string;
+}
+
+function signAccessToken(user: IUser): string {
   return jwt.sign({ id: user._id.toString(), username: user.username }, config.jwtSecret, {
     expiresIn: config.jwtExpiresIn as any,
   });
+}
+
+function signRefreshToken(user: IUser): string {
+  return jwt.sign({ id: user._id.toString(), username: user.username }, config.refreshTokenSecret, {
+    expiresIn: config.refreshTokenExpiresIn as any,
+  });
+}
+
+async function hashRefreshToken(token: string): Promise<string> {
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 export const authService = {
@@ -43,8 +61,12 @@ export const authService = {
       email: `${trimmedUsername.toLowerCase()}@local`,
     });
 
-    const token = signToken(user);
-    return { user, token };
+    const accessToken = signAccessToken(user);
+    const refreshToken = signRefreshToken(user);
+    user.refreshTokenHash = await hashRefreshToken(refreshToken);
+    await user.save();
+
+    return { user, accessToken, refreshToken };
   },
 
   async login(username: string, password: string): Promise<AuthResult> {
@@ -60,25 +82,75 @@ export const authService = {
     if (!ok) {
       throw new Error('Invalid username or password');
     }
-    const token = signToken(user);
-    return { user, token };
+
+    const accessToken = signAccessToken(user);
+    const refreshToken = signRefreshToken(user);
+    user.refreshTokenHash = await hashRefreshToken(refreshToken);
+    await user.save();
+
+    return { user, accessToken, refreshToken };
+  },
+
+  async refresh(refreshToken: string): Promise<RefreshResult> {
+    if (!refreshToken) {
+      throw new Error('Refresh token required');
+    }
+    let payload: { id: string; username: string };
+    try {
+      payload = jwt.verify(refreshToken, config.refreshTokenSecret) as any;
+    } catch (err) {
+      throw new Error('Invalid or expired refresh token');
+    }
+    const user = await User.findById(payload.id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    if (!user.refreshTokenHash) {
+      throw new Error('Session revoked');
+    }
+    const incomingHash = await hashRefreshToken(refreshToken);
+    if (incomingHash !== user.refreshTokenHash) {
+      throw new Error('Refresh token mismatch — possible reuse detected');
+    }
+
+    const newAccessToken = signAccessToken(user);
+    const newRefreshToken = signRefreshToken(user);
+    user.refreshTokenHash = await hashRefreshToken(newRefreshToken);
+    await user.save();
+
+    return { user, accessToken: newAccessToken, refreshToken: newRefreshToken };
+  },
+
+  async revoke(userId: string): Promise<void> {
+    await User.updateOne({ _id: userId }, { $unset: { refreshTokenHash: '' } });
   },
 
   async getById(id: string): Promise<IUser | null> {
     return User.findById(id);
   },
 
-  setAuthCookie(res: any, token: string): void {
-    res.cookie(config.cookieName, token, {
+  setAccessTokenCookie(res: any, token: string): void {
+    res.cookie(config.accessTokenCookie, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: config.cookieMaxAge,
+      maxAge: config.accessTokenMaxAge,
       path: '/',
     });
   },
 
-  clearAuthCookie(res: any): void {
-    res.clearCookie(config.cookieName, { path: '/' });
+  setRefreshTokenCookie(res: any, token: string): void {
+    res.cookie(config.refreshTokenCookie, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: config.refreshTokenMaxAge,
+      path: '/',
+    });
+  },
+
+  clearAuthCookies(res: any): void {
+    res.clearCookie(config.accessTokenCookie, { path: '/' });
+    res.clearCookie(config.refreshTokenCookie, { path: '/' });
   },
 };

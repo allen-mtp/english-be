@@ -16,6 +16,7 @@ export interface IUser extends Document {
   totalXp: number;
   lastActiveDate?: Date;
   createdAt: Date;
+  refreshTokenHash?: string;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -33,6 +34,7 @@ const userSchema = new Schema<IUser>({
   xp: { type: Number, default: 0 },
   totalXp: { type: Number, default: 0 },
   lastActiveDate: { type: Date },
+  refreshTokenHash: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 
