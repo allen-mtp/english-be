@@ -101,6 +101,9 @@ ${!topic && category !== 'mixed' ? `Focus only on ${category} questions.` : ''}`
       };
     });
 
+    if (quiz.questions.length === 0) {
+      throw new Error('Quiz has no questions');
+    }
     const score = Math.round((correctCount / quiz.questions.length) * 100);
     quiz.score = score;
     quiz.correctCount = correctCount;
@@ -124,6 +127,7 @@ ${!topic && category !== 'mixed' ? `Focus only on ${category} questions.` : ''}`
   }
 
   private determineLevel(correct: number, total: number): string {
+    if (total === 0) return 'A1';
     const percentage = (correct / total) * 100;
     if (percentage < 20) return 'A1';
     if (percentage < 40) return 'A2';

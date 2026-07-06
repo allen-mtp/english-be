@@ -123,8 +123,14 @@ export async function getWeeklySummary(req: Request, res: Response): Promise<voi
 export async function logActivity(req: Request, res: Response): Promise<void> {
   try {
     const { type, durationMinutes, details } = req.body;
-    if (!type) {
-      res.status(400).json({ error: 'type is required' });
+    const ALLOWED_TYPES = ['VOCABULARY', 'PRONUNCIATION', 'SHADOWING', 'CONVERSATION', 'REVIEW'];
+    if (!type || !ALLOWED_TYPES.includes(type)) {
+      res.status(400).json({ error: 'Invalid activity type' });
+      return;
+    }
+    const duration = Number(durationMinutes) || 0;
+    if (duration < 0 || duration > 1440) {
+      res.status(400).json({ error: 'durationMinutes must be between 0 and 1440' });
       return;
     }
 
@@ -132,7 +138,7 @@ export async function logActivity(req: Request, res: Response): Promise<void> {
       userId: getUserId(req),
       date: new Date(),
       type,
-      durationMinutes: durationMinutes || 0,
+      durationMinutes: duration,
       xpEarned: 0,
       details: details || {},
     });

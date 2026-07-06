@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getUserId } from '../utils/auth-request';
+import { parsePagination } from '../utils/pagination';
 import { GrammarLesson, GrammarProgress } from '../models/Grammar';
 import { grammarService } from '../services/grammar.service';
 import { LearningLog } from '../models/LearningLog';
@@ -19,10 +20,8 @@ export async function generateLesson(req: Request, res: Response): Promise<void>
 
 export async function getLessons(req: Request, res: Response): Promise<void> {
   try {
-    const { topic, level, page = '1', limit = '20' } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    const { topic, level, ...pagination } = req.query;
+    const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
     const filter: any = {};
     if (topic) filter.topic = topic;
@@ -114,6 +113,10 @@ export async function submitExercises(req: Request, res: Response): Promise<void
     });
 
     const correctCount = exerciseScores.filter(s => s.correct).length;
+    if (lesson.exercises.length === 0) {
+      res.status(400).json({ error: 'Lesson has no exercises' });
+      return;
+    }
     const score = Math.round((correctCount / lesson.exercises.length) * 100);
     const completed = score >= 70;
 

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getUserId } from '../utils/auth-request';
+import { parsePagination } from '../utils/pagination';
 import { WritingSubmission } from '../models/Writing';
 import { writingService } from '../services/writing.service';
 import { LearningLog } from '../models/LearningLog';
@@ -59,10 +60,8 @@ export async function submitWriting(req: Request, res: Response): Promise<void> 
 
 export async function getHistory(req: Request, res: Response): Promise<void> {
   try {
-    const { page = '1', limit = '10' } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    const { ...pagination } = req.query;
+    const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
     const total = await WritingSubmission.countDocuments({ userId: getUserId(req) });
     const submissions = await WritingSubmission.find({ userId: getUserId(req) })

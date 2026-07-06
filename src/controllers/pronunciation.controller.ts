@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getUserId } from '../utils/auth-request';
+import { parsePagination } from '../utils/pagination';
 import { PronunciationLog } from '../models/PronunciationLog';
 import { pronunciationService } from '../services/pronunciation.service';
 import { LearningLog } from '../models/LearningLog';
@@ -52,10 +53,8 @@ export async function scorePronunciation(req: Request, res: Response): Promise<v
 
 export async function getPronunciationHistory(req: Request, res: Response): Promise<void> {
   try {
-    const { page = '1', limit = '20' } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    const { ...pagination } = req.query;
+    const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
     const total = await PronunciationLog.countDocuments({ userId: getUserId(req) });
     const logs = await PronunciationLog.find({ userId: getUserId(req) })

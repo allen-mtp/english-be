@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getUserId } from '../utils/auth-request';
+import { parsePagination } from '../utils/pagination';
 import { Quiz } from '../models/Quiz';
 import { quizService } from '../services/quiz.service';
 import { LearningLog } from '../models/LearningLog';
@@ -29,10 +30,8 @@ export async function generateQuiz(req: Request, res: Response): Promise<void> {
 
 export async function getQuizzes(req: Request, res: Response): Promise<void> {
   try {
-    const { type, completed, page = '1', limit = '10' } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    const { type, completed, ...pagination } = req.query;
+    const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
     const filter: any = { userId: getUserId(req) };
     if (type) filter.type = type;

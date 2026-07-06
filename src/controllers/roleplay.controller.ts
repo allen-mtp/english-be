@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getUserId } from '../utils/auth-request';
+import { parsePagination } from '../utils/pagination';
 import { roleplayService } from '../services/roleplay.service';
 import { RolePlayConversation } from '../models/RolePlayConversation';
 import { LearningLog } from '../models/LearningLog';
@@ -56,7 +57,8 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
     res.json({ message: aiResponse });
   } catch (error: any) {
     console.error('sendMessage error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+    const status = /not found/i.test(error.message || '') ? 404 : 500;
+    res.status(status).json({ error: error.message || 'Internal server error' });
   }
 }
 
@@ -64,7 +66,7 @@ export async function endConversation(req: Request, res: Response): Promise<void
   try {
     const { id } = req.params;
 
-    const result = await roleplayService.summarizeConversation(id);
+    const result = await roleplayService.summarizeConversation(getUserId(req), id);
 
     // Log the XP
     await updateStreak(getUserId(req));
@@ -81,16 +83,15 @@ export async function endConversation(req: Request, res: Response): Promise<void
     res.json({ conversation: result.conversation, analysis: result.analysis, xpEarned: xp });
   } catch (error: any) {
     console.error('endConversation error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+    const status = /not found/i.test(error.message || '') ? 404 : 500;
+    res.status(status).json({ error: error.message || 'Internal server error' });
   }
 }
 
 export async function getConversations(req: Request, res: Response): Promise<void> {
   try {
-    const { page = '1', limit = '10' } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    const { ...pagination } = req.query;
+    const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
     const total = await RolePlayConversation.countDocuments({ userId: getUserId(req) });
     const conversations = await RolePlayConversation.find({ userId: getUserId(req) })

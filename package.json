@@ -11,6 +11,7 @@
     "seed:vocab": "ts-node src/scripts/seed-vocab.ts",
     "seed:conversations": "ts-node src/scripts/seed-conversations.ts",
     "migrate": "ts-node src/scripts/migrate-user-levels.ts",
+    "migrate:drop-email-index": "ts-node src/scripts/drop-email-index.ts",
     "test": "cross-env NODE_ENV=test jest --forceExit",
     "test:watch": "cross-env NODE_ENV=test jest --watch",
     "test:coverage": "cross-env NODE_ENV=test jest --coverage --forceExit"

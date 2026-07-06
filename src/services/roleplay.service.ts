@@ -53,7 +53,7 @@ export class RoleplayService {
   }
 
   async chat(userId: string, conversationId: string, userMessage: string) {
-    const conv = await RolePlayConversation.findById(conversationId);
+    const conv = await RolePlayConversation.findOne({ _id: conversationId, userId });
     if (!conv) throw new Error('Conversation not found');
 
     const fullPrompt = CHAT_PROMPT.replace('{aiRole}', conv.aiRole);
@@ -130,8 +130,8 @@ Reply naturally as ${conv.aiRole}.`;
     return aiMsg;
   }
 
-  async summarizeConversation(conversationId: string) {
-    const conv = await RolePlayConversation.findById(conversationId);
+  async summarizeConversation(userId: string, conversationId: string) {
+    const conv = await RolePlayConversation.findOne({ _id: conversationId, userId });
     if (!conv) throw new Error('Conversation not found');
 
     const summaryPrompt = `You are an English teacher. Summarize this role-play conversation and provide feedback.

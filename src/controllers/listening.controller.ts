@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getUserId } from '../utils/auth-request';
+import { parsePagination } from '../utils/pagination';
 import { ListeningExercise, ListeningProgress } from '../models/Listening';
 import { listeningService } from '../services/listening.service';
 import { LearningLog } from '../models/LearningLog';
@@ -19,10 +20,8 @@ export async function generateExercise(req: Request, res: Response): Promise<voi
 
 export async function getExercises(req: Request, res: Response): Promise<void> {
   try {
-    const { topic, level, type, page = '1', limit = '20' } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    const { topic, level, type, ...pagination } = req.query;
+    const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
     const filter: any = {};
     if (topic) filter.topic = topic;
@@ -103,6 +102,10 @@ export async function submitAnswers(req: Request, res: Response): Promise<void> 
     }
 
     const correctCount = answers.filter((answer, index) => answer === exercise.questions[index]?.correctIndex).length;
+    if (exercise.questions.length === 0) {
+      res.status(400).json({ error: 'Exercise has no questions' });
+      return;
+    }
     const score = Math.round((correctCount / exercise.questions.length) * 100);
     const completed = score >= 70;
 

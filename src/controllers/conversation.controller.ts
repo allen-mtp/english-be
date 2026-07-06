@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Conversation } from '../models/Conversation';
 import { conversationService } from '../services/conversation.service';
+import { parsePagination } from '../utils/pagination';
 
 export async function generateConversation(req: Request, res: Response): Promise<void> {
   try {
@@ -20,10 +21,8 @@ export async function generateConversation(req: Request, res: Response): Promise
 
 export async function getConversations(req: Request, res: Response): Promise<void> {
   try {
-    const { topic, level, page = '1', limit = '20' } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    const { topic, level, ...pagination } = req.query;
+    const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
     const filter: any = {};
     if (topic) filter.topic = topic;
@@ -59,15 +58,7 @@ export async function getConversationById(req: Request, res: Response): Promise<
 }
 
 export async function deleteConversation(req: Request, res: Response): Promise<void> {
-  try {
-    const { id } = req.params;
-    const conversation = await Conversation.findByIdAndDelete(id);
-    if (!conversation) {
-      res.status(404).json({ error: 'Conversation not found' });
-      return;
-    }
-    res.json({ message: 'Conversation deleted' });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
+  // Conversations are shared library content — deletion is not allowed from the API.
+  // Removing shared content would affect all users. Use admin tooling or DB scripts instead.
+  res.status(403).json({ error: 'Shared conversations cannot be deleted' });
 }

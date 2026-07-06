@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getUserId } from '../utils/auth-request';
+import { parsePagination } from '../utils/pagination';
 import { Vocabulary } from '../models/Vocabulary';
 import { UserVocabulary } from '../models/UserVocabulary';
 import { LearningLog } from '../models/LearningLog';
@@ -42,6 +43,10 @@ export async function generateBatchVocabularies(req: Request, res: Response): Pr
       res.status(400).json({ error: 'Words array is required' });
       return;
     }
+    if (words.length > 20) {
+      res.status(400).json({ error: 'Maximum 20 words per batch' });
+      return;
+    }
 
     const vocabularies = await vocabularyService.generateBatch(getUserId(req), words, topic);
     await updateStreak(getUserId(req));
@@ -65,10 +70,8 @@ export async function generateBatchVocabularies(req: Request, res: Response): Pr
 
 export async function getMyVocabularies(req: Request, res: Response): Promise<void> {
   try {
-    const { status, level, topic, page = '1', limit = '20' } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    const { status, level, topic, ...pagination } = req.query;
+    const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
     const userVocabIds = await UserVocabulary.find({ userId: getUserId(req) }, { vocabularyId: 1 });
     const vocabIds = userVocabIds.map(uv => uv.vocabularyId);

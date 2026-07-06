@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getUserId } from '../utils/auth-request';
+import { parsePagination } from '../utils/pagination';
 import { ShadowingLog } from '../models/ShadowingLog';
 import { shadowingService } from '../services/shadowing.service';
 import { LearningLog } from '../models/LearningLog';
@@ -42,10 +43,8 @@ export async function scoreShadowing(req: Request, res: Response): Promise<void>
 
 export async function getShadowingHistory(req: Request, res: Response): Promise<void> {
   try {
-    const { page = '1', limit = '20' } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    const { ...pagination } = req.query;
+    const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
     const total = await ShadowingLog.countDocuments({ userId: getUserId(req) });
     const logs = await ShadowingLog.find({ userId: getUserId(req) })
