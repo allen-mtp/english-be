@@ -1,9 +1,12 @@
 import { aiService } from './ai.service';
 import { Roadmap, IDailyLesson } from '../models/Roadmap';
 
+const ROADMAP_BATCH_SIZE = 5;
+const TOTAL_DAYS = 30;
+
 const ROADMAP_SYSTEM_PROMPT = `You are an experienced English teacher designing a personalized learning roadmap.
-Create a complete 30-day lesson plan. Each day progressively builds on previous days.
-Return ONLY valid JSON array (no markdown, no code block) with 30 objects:
+You will be asked to create a specific range of days within a 30-day plan. Each day progressively builds on previous days.
+Return ONLY valid JSON array (no markdown, no code block) with one object per requested day:
 [
   {
     "day": number,
@@ -22,9 +25,9 @@ Return ONLY valid JSON array (no markdown, no code block) with 30 objects:
   }
 ]
 
-5-7 vocab words per day. Keep examples short (one sentence each).
-Grammar notes and tips in Vietnamese, keep concise. Conversations should be short (4-6 exchanges).
-Spread the difficulty progressively from day 1 to day 30.
+5 vocab words per day max. Keep examples to one short sentence each.
+Grammar notes and tips in Vietnamese, max 2 sentences each. Conversations: exactly 4 short exchanges.
+shadowingText: 2-3 short sentences max. Spread difficulty progressively across the full 30 days.
 
 Beginner (A1-A2): greetings → family → daily routine → food → shopping → directions → weather → hobbies
 Intermediate (B1-B2): work communication → meetings → travel → culture → news → storytelling → opinions
@@ -39,14 +42,47 @@ export function nextLevel(current: string): string {
 }
 
 export class RoadmapService {
-  async generate(userId: string, level: string, goal: string, dailyMinutes: number, topic?: string) {
-    const userPrompt = `Student CEFR level: ${level}, Goal: ${goal}, Daily study time: ${dailyMinutes} minutes.
-${topic ? `Focus area / interest: "${topic}" — tailor vocabulary, conversations, and themes around this topic across the 30 days.` : ''}
-Create a 30-day learning roadmap. Return exactly 30 days.`;
+  private async generateLessonBatch(
+    level: string,
+    goal: string,
+    dailyMinutes: number,
+    startDay: number,
+    endDay: number,
+    topic?: string,
+    previousLessons: IDailyLesson[] = [],
+  ): Promise<IDailyLesson[]> {
+    const dayCount = endDay - startDay + 1;
+    const prevContext = previousLessons.length > 0
+      ? `\nPrevious days already planned: ${previousLessons.slice(-3).map(l => `Day ${l.day} "${l.title}"`).join(', ')}. Continue from there.`
+      : '';
 
-    const lessons = await aiService.generateJSON<IDailyLesson[]>(ROADMAP_SYSTEM_PROMPT, userPrompt, 32768);
+    const userPrompt = `Student CEFR level: ${level}, Goal: ${goal}, Daily study time: ${dailyMinutes} minutes.
+${topic ? `Focus area / interest: "${topic}" — tailor vocabulary, conversations, and themes around this topic.` : ''}
+Create days ${startDay} to ${endDay} of a ${TOTAL_DAYS}-day learning roadmap.${prevContext}
+Return exactly ${dayCount} day objects with day numbers ${startDay} through ${endDay}.`;
+
+    const lessons = await aiService.generateJSON<IDailyLesson[]>(ROADMAP_SYSTEM_PROMPT, userPrompt, 16384);
 
     if (!Array.isArray(lessons) || lessons.length === 0) {
+      throw new Error(`AI returned invalid roadmap for days ${startDay}-${endDay}`);
+    }
+
+    return lessons;
+  }
+
+  async generate(userId: string, level: string, goal: string, dailyMinutes: number, topic?: string) {
+    const lessons: IDailyLesson[] = [];
+
+    for (let startDay = 1; startDay <= TOTAL_DAYS; startDay += ROADMAP_BATCH_SIZE) {
+      const endDay = Math.min(startDay + ROADMAP_BATCH_SIZE - 1, TOTAL_DAYS);
+      if (startDay > 1) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+      const batch = await this.generateLessonBatch(level, goal, dailyMinutes, startDay, endDay, topic, lessons);
+      lessons.push(...batch);
+    }
+
+    if (lessons.length === 0) {
       throw new Error('AI returned invalid roadmap');
     }
 
@@ -60,7 +96,7 @@ Create a 30-day learning roadmap. Return exactly 30 days.`;
       level,
       goal,
       dailyMinutes,
-      totalDays: 30,
+      totalDays: TOTAL_DAYS,
       currentDay: 0,
       lessons,
       isActive: true,

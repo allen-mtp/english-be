@@ -31,6 +31,13 @@ export async function generateRoadmap(req: Request, res: Response): Promise<void
     res.status(201).json({ roadmap });
   } catch (error: any) {
     console.error('generateRoadmap error:', error);
+    const status = error?.status;
+    if (status === 503 || status === 429) {
+      res.status(503).json({
+        error: 'AI service is temporarily busy. Please wait a moment and try again.',
+      });
+      return;
+    }
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }

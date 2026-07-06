@@ -16,13 +16,13 @@ async function authedAgent(username = 'roadmapuser') {
   return agent;
 }
 
-function makeFakeLessons(days = 30) {
+function makeFakeLessons(days = 30, startDay = 1) {
   return Array.from({ length: days }, (_, i) => ({
-    day: i + 1,
-    title: `Lesson ${i + 1}`,
-    vocabularies: [{ word: `word${i + 1}`, ipa: '/test/', meaningVi: 'nghia', meaningEn: 'meaning', partOfSpeech: 'noun', examples: [{ en: 'a', vi: 'b' }] }],
+    day: startDay + i,
+    title: `Lesson ${startDay + i}`,
+    vocabularies: [{ word: `word${startDay + i}`, ipa: '/test/', meaningVi: 'nghia', meaningEn: 'meaning', partOfSpeech: 'noun', examples: [{ en: 'a', vi: 'b' }] }],
     grammarNote: 'note',
-    conversationTitle: `Chat ${i + 1}`,
+    conversationTitle: `Chat ${startDay + i}`,
     conversation: [{ speaker: 'A', text: 'hi', translation: 'chao' }],
     pronunciationFocus: 'vowels',
     shadowingText: 'shadow text',
@@ -30,9 +30,21 @@ function makeFakeLessons(days = 30) {
   }));
 }
 
+function mockBatchLessons() {
+  mockedGenerateJSON.mockImplementation(async (_sys, userPrompt: string) => {
+    const match = userPrompt.match(/days (\d+) to (\d+)/);
+    if (match) {
+      const start = parseInt(match[1], 10);
+      const end = parseInt(match[2], 10);
+      return makeFakeLessons(end - start + 1, start);
+    }
+    return makeFakeLessons(30);
+  });
+}
+
 describe('Roadmap: generate', () => {
   beforeEach(() => {
-    mockedGenerateJSON.mockResolvedValue(makeFakeLessons(30));
+    mockBatchLessons();
   });
 
   it('POST /api/roadmap/generate should create a 30-day roadmap', async () => {
@@ -64,7 +76,7 @@ describe('Roadmap: generate', () => {
 
 describe('Roadmap: getMyRoadmap', () => {
   beforeEach(() => {
-    mockedGenerateJSON.mockResolvedValue(makeFakeLessons(30));
+    mockBatchLessons();
   });
 
   it('GET /api/roadmap/my should return active roadmap with stats', async () => {
@@ -107,7 +119,7 @@ describe('Roadmap: getMyRoadmap', () => {
 
 describe('Roadmap: getDayLesson', () => {
   beforeEach(() => {
-    mockedGenerateJSON.mockResolvedValue(makeFakeLessons(30));
+    mockBatchLessons();
   });
 
   it('GET /api/roadmap/day/:day should return lesson', async () => {
@@ -131,7 +143,7 @@ describe('Roadmap: getDayLesson', () => {
 
 describe('Roadmap: completeDayLesson + progression', () => {
   beforeEach(() => {
-    mockedGenerateJSON.mockResolvedValue(makeFakeLessons(30));
+    mockBatchLessons();
   });
 
   it('should complete day 1 and advance currentDay', async () => {
@@ -178,7 +190,7 @@ describe('Roadmap: completeDayLesson + progression', () => {
       await agent.post(`/api/roadmap/day/${d}/complete`);
     }
 
-    mockedGenerateJSON.mockResolvedValue(makeFakeLessons(30));
+    mockBatchLessons();
     const res = await agent.post('/api/roadmap/generate').send({});
     expect(res.status).toBe(201);
     expect(res.body.roadmap.level).toBe('A2');
@@ -192,7 +204,7 @@ describe('Roadmap: completeDayLesson + progression', () => {
       await agent.post(`/api/roadmap/day/${d}/complete`);
     }
 
-    mockedGenerateJSON.mockResolvedValue(makeFakeLessons(30));
+    mockBatchLessons();
     const res = await agent.post('/api/roadmap/generate').send({});
     expect(res.status).toBe(201);
     expect(res.body.roadmap.level).toBe('C2');
@@ -201,7 +213,7 @@ describe('Roadmap: completeDayLesson + progression', () => {
 
 describe('Roadmap: reset', () => {
   beforeEach(() => {
-    mockedGenerateJSON.mockResolvedValue(makeFakeLessons(30));
+    mockBatchLessons();
   });
 
   it('PATCH /api/roadmap/reset should deactivate active roadmap', async () => {
@@ -228,7 +240,7 @@ describe('Roadmap: reset', () => {
 
 describe('Roadmap: history', () => {
   beforeEach(() => {
-    mockedGenerateJSON.mockResolvedValue(makeFakeLessons(30));
+    mockBatchLessons();
   });
 
   it('GET /api/roadmap/history should list roadmaps', async () => {
