@@ -38,13 +38,27 @@ export async function generateRoadmap(req: Request, res: Response): Promise<void
 export async function getMyRoadmap(req: Request, res: Response): Promise<void> {
   try {
     const userId = getUserId(req);
-    const roadmap = await Roadmap.findOne({ userId, isActive: true }).sort({ createdAt: -1 });
+    const completedCount = await Roadmap.countDocuments({ userId, isCompleted: true });
+
+    // Prefer active roadmap; otherwise return the most recent one (e.g. just completed)
+    let roadmap = await Roadmap.findOne({ userId, isActive: true }).sort({ createdAt: -1 });
     if (!roadmap) {
-      res.status(404).json({ error: 'No active roadmap. Generate one first.' });
-      return;
+      roadmap = await Roadmap.findOne({ userId }).sort({ createdAt: -1 });
     }
 
-    const completedCount = await Roadmap.countDocuments({ userId, isCompleted: true });
+    if (!roadmap) {
+      res.json({
+        roadmap: null,
+        stats: {
+          completedRoadmaps: completedCount,
+          totalLessonsCompleted: 0,
+          totalDays: 0,
+          nextLevel: 'A1',
+          canGenerateNew: true,
+        },
+      });
+      return;
+    }
 
     res.json({
       roadmap,
@@ -53,7 +67,7 @@ export async function getMyRoadmap(req: Request, res: Response): Promise<void> {
         totalLessonsCompleted: roadmap.currentDay,
         totalDays: roadmap.totalDays,
         nextLevel: roadmap.isCompleted ? nextLevel(roadmap.level) : roadmap.level,
-        canGenerateNew: roadmap.isCompleted,
+        canGenerateNew: roadmap.isCompleted || !roadmap.isActive,
       },
     });
   } catch (error: any) {

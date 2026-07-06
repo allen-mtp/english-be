@@ -95,9 +95,10 @@ describe('Auth: /me', () => {
     expect(res.body.user.username).toBe('meuser');
   });
 
-  it('should reject without token', async () => {
+  it('should return null user without token', async () => {
     const res = await request(app).get('/api/auth/me');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(res.body.user).toBeNull();
   });
 
   it('should reject with invalid token', async () => {

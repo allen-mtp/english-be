@@ -87,14 +87,28 @@ export async function logout(req: Request, res: Response): Promise<void> {
 }
 
 export async function me(req: Request, res: Response): Promise<void> {
-  if (!req.user) {
-    res.status(401).json({ error: 'Not authenticated' });
-    return;
+  try {
+    const token =
+      req.cookies?.[config.accessTokenCookie] ||
+      (req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.slice(7)
+        : undefined);
+
+    if (!token) {
+      res.json({ user: null });
+      return;
+    }
+
+    const payload = jwt.verify(token, config.jwtSecret) as { id: string };
+    const user = await authService.getById(payload.id);
+    if (!user) {
+      res.json({ user: null });
+      return;
+    }
+
+    res.json({ user: publicUser(user) });
+  } catch {
+    // Expired or invalid access token — let the client refresh and retry
+    res.status(401).json({ error: 'Invalid or expired session', code: 'TOKEN_EXPIRED' });
   }
-  const user = await authService.getById(req.user.id);
-  if (!user) {
-    res.status(404).json({ error: 'User not found' });
-    return;
-  }
-  res.json({ user: publicUser(user) });
 }

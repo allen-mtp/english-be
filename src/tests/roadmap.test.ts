@@ -79,10 +79,29 @@ describe('Roadmap: getMyRoadmap', () => {
     expect(res.body.stats.completedRoadmaps).toBe(0);
   });
 
-  it('should return 404 if no roadmap exists', async () => {
+  it('should return 200 with null roadmap if none exists', async () => {
     const agent = await authedAgent('roadmapget2');
     const res = await agent.get('/api/roadmap/my');
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
+    expect(res.body.roadmap).toBeNull();
+    expect(res.body.stats.canGenerateNew).toBe(true);
+    expect(res.body.stats.nextLevel).toBe('A1');
+  });
+
+  it('should return completed roadmap after finishing all days', async () => {
+    const agent = await authedAgent('roadmapget3');
+    await agent.post('/api/roadmap/generate').send({ level: 'A1' });
+
+    for (let d = 1; d <= 30; d++) {
+      await agent.post(`/api/roadmap/day/${d}/complete`);
+    }
+
+    const res = await agent.get('/api/roadmap/my');
+    expect(res.status).toBe(200);
+    expect(res.body.roadmap).toBeDefined();
+    expect(res.body.roadmap.isCompleted).toBe(true);
+    expect(res.body.stats.canGenerateNew).toBe(true);
+    expect(res.body.stats.nextLevel).toBe('A2');
   });
 });
 
