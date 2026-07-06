@@ -1,13 +1,14 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+export type UserLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+
 export interface IUser extends Document {
   username: string;
-  email: string;
   password: string;
   name: string;
   avatar?: string;
-  level: 'beginner' | 'intermediate' | 'advanced';
+  level: UserLevel;
   dailyGoalMinutes: number;
   dailyNewWords: number;
   streak: number;
@@ -22,11 +23,10 @@ export interface IUser extends Document {
 
 const userSchema = new Schema<IUser>({
   username: { type: String, required: true, unique: true, lowercase: true, trim: true, minlength: 3, maxlength: 30, match: /^[a-zA-Z0-9_]+$/ },
-  email: { type: String, required: false, lowercase: true, trim: true },
   password: { type: String, required: true, minlength: 6, select: false },
   name: { type: String, required: true, trim: true },
   avatar: { type: String },
-  level: { type: String, enum: ['beginner', 'intermediate', 'advanced'], default: 'beginner' },
+  level: { type: String, enum: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'], default: 'A1' },
   dailyGoalMinutes: { type: Number, default: 30 },
   dailyNewWords: { type: Number, default: 10 },
   streak: { type: Number, default: 0 },

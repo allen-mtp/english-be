@@ -33,7 +33,7 @@ export async function getStats(req: Request, res: Response): Promise<void> {
         streakMax: user?.streakMax || 0,
         xp: user?.xp || 0,
         totalXp: user?.totalXp || 0,
-        level: user?.level || 'beginner',
+        level: user?.level || 'A1',
         dailyGoalMinutes: user?.dailyGoalMinutes || 30,
         totalVocab: userVocabs.length,
         masteredVocab: masteredCount,

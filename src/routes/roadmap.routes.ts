@@ -6,12 +6,14 @@ import {
   getDayLesson,
   completeDayLesson,
   resetRoadmap,
+  getRoadmapHistory,
 } from '../controllers/roadmap.controller';
 
 const router = Router();
 
 router.post('/generate', aiLimiter, generateRoadmap);
 router.get('/my', getMyRoadmap);
+router.get('/history', getRoadmapHistory);
 router.get('/day/:day', getDayLesson);
 router.post('/day/:day/complete', completeDayLesson);
 router.patch('/reset', resetRoadmap);

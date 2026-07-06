@@ -40,7 +40,7 @@ Scoring criteria:
 Be specific and constructive. Vietnamese explanations.`;
 
 export class WritingService {
-  async generatePrompt(level: string = 'B1', type?: string, topic?: string) {
+  async generatePrompt(level: string = 'A1', type?: string, topic?: string) {
     const types = ['email', 'essay', 'story', 'description', 'letter', 'report', 'review'];
     const chosenType = type || types[Math.floor(Math.random() * types.length)];
 

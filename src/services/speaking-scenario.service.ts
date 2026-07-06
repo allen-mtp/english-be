@@ -25,7 +25,7 @@ const TOPICS = [
 ];
 
 export class SpeakingScenarioService {
-  async generate(level: string = 'B1', topic?: string) {
+  async generate(level: string = 'A1', topic?: string) {
     const chosenTopic = topic || TOPICS[Math.floor(Math.random() * TOPICS.length)];
 
     const userPrompt = `Create a speaking practice scenario.

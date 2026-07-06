@@ -23,9 +23,11 @@ function signAccessToken(user: IUser): string {
 }
 
 function signRefreshToken(user: IUser): string {
-  return jwt.sign({ id: user._id.toString(), username: user.username }, config.refreshTokenSecret, {
-    expiresIn: config.refreshTokenExpiresIn as any,
-  });
+  return jwt.sign(
+    { id: user._id.toString(), username: user.username, jti: crypto.randomUUID() },
+    config.refreshTokenSecret,
+    { expiresIn: config.refreshTokenExpiresIn as any },
+  );
 }
 
 async function hashRefreshToken(token: string): Promise<string> {
@@ -58,7 +60,6 @@ export const authService = {
       username: trimmedUsername.toLowerCase(),
       password,
       name: displayName,
-      email: `${trimmedUsername.toLowerCase()}@local`,
     });
 
     const accessToken = signAccessToken(user);

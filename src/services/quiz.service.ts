@@ -36,7 +36,7 @@ export class QuizService {
     userId: string,
     type: 'placement' | 'practice' | 'achievement' = 'practice',
     category: 'mixed' | 'vocabulary' | 'grammar' | 'listening' | 'reading' = 'mixed',
-    level: string = 'B1',
+    level: string = 'A1',
     questionCount: number = 10,
     topic?: string,
   ) {

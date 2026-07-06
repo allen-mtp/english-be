@@ -31,6 +31,9 @@ export interface IRoadmap extends Document {
   currentDay: number;
   lessons: IDailyLesson[];
   isActive: boolean;
+  isCompleted: boolean;
+  completedAt: Date | null;
+  version: number;
   generatedBy: string;
   createdAt: Date;
 }
@@ -66,6 +69,9 @@ const roadmapSchema = new Schema<IRoadmap>({
     tips: { type: String, default: '' },
   }],
   isActive: { type: Boolean, default: true },
+  isCompleted: { type: Boolean, default: false },
+  completedAt: { type: Date, default: null },
+  version: { type: Number, default: 1 },
   generatedBy: { type: String, default: 'ai' },
   createdAt: { type: Date, default: Date.now },
 });

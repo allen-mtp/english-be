@@ -31,7 +31,7 @@ const TOPICS = ['travel', 'food', 'work', 'shopping', 'health', 'education', 'ne
 const TYPES = ['dialogue', 'monologue', 'story', 'news', 'announcement', 'interview'];
 
 export class ListeningService {
-  async generate(level: string = 'B1', topic?: string, type?: string) {
+  async generate(level: string = 'A1', topic?: string, type?: string) {
     const chosenTopic = topic || TOPICS[Math.floor(Math.random() * TOPICS.length)];
     const chosenType = type || TYPES[Math.floor(Math.random() * TYPES.length)];
 

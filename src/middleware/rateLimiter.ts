@@ -6,6 +6,7 @@ import { config } from '../config';
 let redisStore: any = null;
 
 async function initRedisStore(): Promise<void> {
+  if (process.env.NODE_ENV === 'test') return;
   try {
     const { Redis } = await import('ioredis');
     const RedisStoreModule = await import('rate-limit-redis');
@@ -40,6 +41,8 @@ export function hasRedisStore(): boolean {
   return redisStore !== null;
 }
 
+const isTest = process.env.NODE_ENV === 'test';
+
 function limiterOptions(extra: Record<string, any> = {}) {
   return {
     standardHeaders: true,
@@ -48,28 +51,35 @@ function limiterOptions(extra: Record<string, any> = {}) {
   };
 }
 
+const skip = () => isTest;
+
 export const generalLimiter = rateLimit(limiterOptions({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: { error: 'Too many requests, please try again later' },
+  skip,
 }));
 
 export const aiLimiter = rateLimit(limiterOptions({
   windowMs: 24 * 60 * 60 * 1000,
   max: 50,
   message: { error: 'Daily AI request limit reached. Try again tomorrow.' },
+  skip,
 }));
 
 export const authLimiter = rateLimit(limiterOptions({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { error: 'Too many auth attempts, please try again later' },
+  skip,
 }));
 
-export const slowDownLimiter: RequestHandler = slowDown({
-  windowMs: 15 * 60 * 1000,
-  delayAfter: 30,
-  delayMs: (hits: number) => (hits - 30) * 100,
-  maxDelayMs: 2000,
-  validate: { delayMs: false },
-});
+export const slowDownLimiter: RequestHandler = isTest
+  ? (_req, _res, next) => next()
+  : slowDown({
+      windowMs: 15 * 60 * 1000,
+      delayAfter: 30,
+      delayMs: (hits: number) => (hits - 30) * 100,
+      maxDelayMs: 2000,
+      validate: { delayMs: false },
+    });

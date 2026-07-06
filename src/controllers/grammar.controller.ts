@@ -30,7 +30,7 @@ export async function getLessons(req: Request, res: Response): Promise<void> {
 
     const total = await GrammarLesson.countDocuments(filter);
     const lessons = await GrammarLesson.find(filter)
-      .select('title topic level difficulty createdAt')
+      .select('title topic level createdAt')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);

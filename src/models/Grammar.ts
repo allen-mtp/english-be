@@ -17,7 +17,6 @@ export interface IGrammarLesson extends Document {
   rules: string[];
   commonMistakes: Array<{ mistake: string; correct: string; explanation: string }>;
   exercises: IGrammarExercise[];
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
   createdAt: Date;
 }
 
@@ -37,14 +36,13 @@ const grammarLessonSchema = new Schema<IGrammarLesson>({
     correct: String,
     explanation: String,
   }],
-  exercises: [{
-    question: String,
-    options: [String],
-    correctIndex: Number,
-    explanation: String,
-  }],
-  difficulty: { type: String, enum: ['beginner', 'intermediate', 'advanced'], default: 'intermediate' },
-  createdAt: { type: Date, default: Date.now },
+    exercises: [{
+      question: String,
+      options: [String],
+      correctIndex: Number,
+      explanation: String,
+    }],
+    createdAt: { type: Date, default: Date.now },
 });
 
 grammarLessonSchema.index({ topic: 1, level: 1 });

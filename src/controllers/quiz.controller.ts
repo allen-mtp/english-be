@@ -9,7 +9,7 @@ import { updateStreak } from '../services/streak.service';
 
 export async function generateQuiz(req: Request, res: Response): Promise<void> {
   try {
-    const { type = 'practice', category = 'mixed', level = 'B1', questionCount = 10, topic } = req.body;
+    const { type = 'practice', category = 'mixed', level = 'A1', questionCount = 10, topic } = req.body;
 
     const quiz = await quizService.generate(
       getUserId(req),
@@ -96,12 +96,7 @@ export async function submitQuiz(req: Request, res: Response): Promise<void> {
 
     // If placement test, update user level
     if (result.determinedLevel) {
-      const levelMap: Record<string, 'beginner' | 'intermediate' | 'advanced'> = {
-        A1: 'beginner', A2: 'beginner',
-        B1: 'intermediate', B2: 'intermediate',
-        C1: 'advanced', C2: 'advanced',
-      };
-      await User.findByIdAndUpdate(getUserId(req), { level: levelMap[result.determinedLevel] });
+      await User.findByIdAndUpdate(getUserId(req), { level: result.determinedLevel });
     }
 
     res.json({ ...result, xpEarned: xp });

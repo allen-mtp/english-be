@@ -62,7 +62,7 @@ export class GrammarService {
 
     const userPrompt = `Create a grammar lesson${chosenTitle ? ` about "${chosenTitle}"` : ''}.
 Topic category: ${chosenTopic}
-Level: ${chosenLevel || 'B1'}
+Level: ${chosenLevel || 'A1'}
 
 Make it comprehensive with 6-8 exercises.`;
 
@@ -71,14 +71,13 @@ Make it comprehensive with 6-8 exercises.`;
     const lesson = await GrammarLesson.create({
       title: data.title || chosenTitle,
       topic: data.topic || chosenTopic,
-      level: data.level || chosenLevel || 'B1',
+      level: data.level || chosenLevel || 'A1',
       explanation: data.explanation,
       explanationVi: data.explanationVi,
       examples: data.examples || [],
       rules: data.rules || [],
       commonMistakes: data.commonMistakes || [],
       exercises: data.exercises || [],
-      difficulty: this.mapDifficulty(data.level || chosenLevel || 'B1'),
     });
 
     return lesson;
@@ -95,12 +94,6 @@ Make it comprehensive with 6-8 exercises.`;
       }
     }
     return results;
-  }
-
-  private mapDifficulty(level: string): 'beginner' | 'intermediate' | 'advanced' {
-    if (['A1', 'A2'].includes(level)) return 'beginner';
-    if (['B1', 'B2'].includes(level)) return 'intermediate';
-    return 'advanced';
   }
 }
 
