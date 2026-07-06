@@ -8,6 +8,7 @@ export interface IGrammarExercise {
 }
 
 export interface IGrammarLesson extends Document {
+  userId: mongoose.Types.ObjectId;
   title: string;
   topic: string;
   level: string;
@@ -21,6 +22,7 @@ export interface IGrammarLesson extends Document {
 }
 
 const grammarLessonSchema = new Schema<IGrammarLesson>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   title: { type: String, required: true, index: true },
   topic: { type: String, required: true, index: true },
   level: { type: String, required: true, index: true },

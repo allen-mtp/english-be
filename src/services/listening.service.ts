@@ -31,7 +31,7 @@ const TOPICS = ['travel', 'food', 'work', 'shopping', 'health', 'education', 'ne
 const TYPES = ['dialogue', 'monologue', 'story', 'news', 'announcement', 'interview'];
 
 export class ListeningService {
-  async generate(level: string = 'A1', topic?: string, type?: string) {
+  async generate(userId: string, level: string = 'A1', topic?: string, type?: string) {
     const chosenTopic = topic || TOPICS[Math.floor(Math.random() * TOPICS.length)];
     const chosenType = type || TYPES[Math.floor(Math.random() * TYPES.length)];
 
@@ -45,6 +45,7 @@ Make it engaging and practical.`;
     const data = await aiService.generateJSON<any>(LISTENING_SYSTEM_PROMPT, userPrompt, 8192);
 
     const exercise = await ListeningExercise.create({
+      userId,
       title: data.title,
       topic: data.topic || chosenTopic,
       level: data.level || level,

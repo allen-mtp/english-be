@@ -511,24 +511,50 @@ describe('Security: Unauthorized route access', () => {
   });
 });
 
-describe('Security: Conversation deletion IDOR (shared content)', () => {
-  it('should NOT allow any authenticated user to delete shared conversations', async () => {
-    // Create a shared conversation directly
-    const conv = await Conversation.create({
-      title: 'Shared',
+describe('Security: Conversation ownership', () => {
+  async function createConversationForUser(username: string) {
+    const user = await User.findOne({ username });
+    if (!user) throw new Error(`User ${username} not found`);
+    return Conversation.create({
+      userId: user._id,
+      title: 'Private chat',
       topic: 'daily',
       level: 'A1',
       dialogue: [{ speaker: 'A', text: 'Hi', translation: 'Xin chao' }],
     });
+  }
 
-    const agent = await authedAgent('shared1');
-    const res = await agent.delete(`/api/conversations/${conv._id}`);
-    // Currently this should fail (403) because conversations are shared — if 200, it's a vuln
-    expect(res.status).toBe(403);
+  it('should NOT allow user to delete another user\'s conversation', async () => {
+    await authedAgent('convowner1');
+    const conv = await createConversationForUser('convowner1');
 
-    // Verify conversation still exists
+    const attacker = await authedAgent('convattacker1');
+    const res = await attacker.delete(`/api/conversations/${conv._id}`);
+    expect(res.status).toBe(404);
+
     const stillThere = await Conversation.findById(conv._id);
     expect(stillThere).toBeTruthy();
+  });
+
+  it('should allow owner to delete their own conversation', async () => {
+    const owner = await authedAgent('convowner2');
+    const conv = await createConversationForUser('convowner2');
+
+    const res = await owner.delete(`/api/conversations/${conv._id}`);
+    expect(res.status).toBe(200);
+
+    const gone = await Conversation.findById(conv._id);
+    expect(gone).toBeNull();
+  });
+
+  it('should NOT expose another user\'s conversations in list', async () => {
+    await authedAgent('convlistA');
+    await createConversationForUser('convlistA');
+
+    const userB = await authedAgent('convlistB');
+    const res = await userB.get('/api/conversations');
+    expect(res.status).toBe(200);
+    expect(res.body.conversations).toHaveLength(0);
   });
 });
 

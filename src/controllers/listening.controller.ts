@@ -10,7 +10,7 @@ import { updateStreak } from '../services/streak.service';
 export async function generateExercise(req: Request, res: Response): Promise<void> {
   try {
     const { level, topic, type } = req.body;
-    const exercise = await listeningService.generate(level || 'B1', topic, type);
+    const exercise = await listeningService.generate(getUserId(req), level || 'B1', topic, type);
     res.status(201).json({ exercise });
   } catch (error: any) {
     console.error('generateExercise error:', error);
@@ -23,7 +23,7 @@ export async function getExercises(req: Request, res: Response): Promise<void> {
     const { topic, level, type, ...pagination } = req.query;
     const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
-    const filter: any = {};
+    const filter: any = { userId: getUserId(req) };
     if (topic) filter.topic = topic;
     if (level) filter.level = level;
     if (type) filter.type = type;
@@ -64,7 +64,7 @@ export async function getExercises(req: Request, res: Response): Promise<void> {
 export async function getExerciseById(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const exercise = await ListeningExercise.findById(id);
+    const exercise = await ListeningExercise.findOne({ _id: id, userId: getUserId(req) });
     if (!exercise) {
       res.status(404).json({ error: 'Exercise not found' });
       return;
@@ -95,7 +95,7 @@ export async function submitAnswers(req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const exercise = await ListeningExercise.findById(id);
+    const exercise = await ListeningExercise.findOne({ _id: id, userId: getUserId(req) });
     if (!exercise) {
       res.status(404).json({ error: 'Exercise not found' });
       return;

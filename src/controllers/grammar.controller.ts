@@ -10,7 +10,7 @@ import { updateStreak } from '../services/streak.service';
 export async function generateLesson(req: Request, res: Response): Promise<void> {
   try {
     const { topic, level, title } = req.body;
-    const lesson = await grammarService.generateLesson(topic, level, title);
+    const lesson = await grammarService.generateLesson(getUserId(req), topic, level, title);
     res.status(201).json({ lesson });
   } catch (error: any) {
     console.error('generateLesson error:', error);
@@ -23,7 +23,7 @@ export async function getLessons(req: Request, res: Response): Promise<void> {
     const { topic, level, ...pagination } = req.query;
     const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
-    const filter: any = {};
+    const filter: any = { userId: getUserId(req) };
     if (topic) filter.topic = topic;
     if (level) filter.level = level;
 
@@ -64,7 +64,7 @@ export async function getLessons(req: Request, res: Response): Promise<void> {
 export async function getLessonById(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const lesson = await GrammarLesson.findById(id);
+    const lesson = await GrammarLesson.findOne({ _id: id, userId: getUserId(req) });
     if (!lesson) {
       res.status(404).json({ error: 'Lesson not found' });
       return;
@@ -96,7 +96,7 @@ export async function submitExercises(req: Request, res: Response): Promise<void
       return;
     }
 
-    const lesson = await GrammarLesson.findById(id);
+    const lesson = await GrammarLesson.findOne({ _id: id, userId: getUserId(req) });
     if (!lesson) {
       res.status(404).json({ error: 'Lesson not found' });
       return;
@@ -174,7 +174,7 @@ export async function submitExercises(req: Request, res: Response): Promise<void
 
 export async function getTopics(req: Request, res: Response): Promise<void> {
   try {
-    const topics = await GrammarLesson.distinct('topic');
+    const topics = await GrammarLesson.distinct('topic', { userId: getUserId(req) });
     res.json({ topics });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
@@ -183,7 +183,7 @@ export async function getTopics(req: Request, res: Response): Promise<void> {
 
 export async function getStats(req: Request, res: Response): Promise<void> {
   try {
-    const totalLessons = await GrammarLesson.countDocuments();
+    const totalLessons = await GrammarLesson.countDocuments({ userId: getUserId(req) });
     const progress = await GrammarProgress.find({ userId: getUserId(req) });
     const completed = progress.filter(p => p.completed).length;
     const avgScore = progress.length > 0

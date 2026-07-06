@@ -40,7 +40,7 @@ const conversationTopics = [
   { topic: 'problem-solving', levels: ['B2', 'C1'] },
 ];
 
-export async function seedConversations(count: number = 30): Promise<void> {
+export async function seedConversations(userId: string, count: number = 30): Promise<void> {
   console.log(`Seeding ${count} conversations...`);
   let created = 0;
 
@@ -55,6 +55,7 @@ Create a natural conversation.`;
       const data = await aiService.generateJSON<any>(SEED_CONVERSATION_PROMPT, userPrompt);
 
       await Conversation.create({
+        userId,
         title: data.title,
         topic: data.topic || topicConfig.topic,
         level: data.level || level,

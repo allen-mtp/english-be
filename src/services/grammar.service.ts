@@ -44,7 +44,7 @@ const GRAMMAR_TOPICS = [
 ];
 
 export class GrammarService {
-  async generateLesson(topic?: string, level?: string, title?: string) {
+  async generateLesson(userId: string, topic?: string, level?: string, title?: string) {
     let chosenTopic = topic;
     let chosenTitle = title;
     let chosenLevel = level;
@@ -56,8 +56,8 @@ export class GrammarService {
       chosenLevel = level || random.level;
     }
 
-    // Check if lesson already exists
-    const existing = await GrammarLesson.findOne({ topic: chosenTopic, title: chosenTitle });
+    // Check if this user already has this lesson
+    const existing = await GrammarLesson.findOne({ userId, topic: chosenTopic, title: chosenTitle });
     if (existing) return existing;
 
     const userPrompt = `Create a grammar lesson${chosenTitle ? ` about "${chosenTitle}"` : ''}.
@@ -69,6 +69,7 @@ Make it comprehensive with 6-8 exercises.`;
     const data = await aiService.generateJSON<any>(GRAMMAR_SYSTEM_PROMPT, userPrompt, 8192);
 
     const lesson = await GrammarLesson.create({
+      userId,
       title: data.title || chosenTitle,
       topic: data.topic || chosenTopic,
       level: data.level || chosenLevel || 'A1',
@@ -83,11 +84,11 @@ Make it comprehensive with 6-8 exercises.`;
     return lesson;
   }
 
-  async generateBatch(topic: string, level: string, count: number = 5) {
+  async generateBatch(userId: string, topic: string, level: string, count: number = 5) {
     const results = [];
     for (let i = 0; i < count; i++) {
       try {
-        const lesson = await this.generateLesson(topic, level);
+        const lesson = await this.generateLesson(userId, topic, level);
         results.push(lesson);
       } catch (error) {
         console.error(`Failed to generate lesson ${i + 1}:`, error);

@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IConversation extends Document {
+  userId: mongoose.Types.ObjectId;
   title: string;
   topic: string;
   level: string;
@@ -13,6 +14,7 @@ export interface IConversation extends Document {
 }
 
 const conversationSchema = new Schema<IConversation>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   title: { type: String, required: true },
   topic: { type: String, required: true, index: true },
   level: { type: String, required: true, index: true },

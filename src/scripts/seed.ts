@@ -20,8 +20,13 @@ async function seed() {
     }
 
     if (mode === 'all' || mode === 'conversations') {
+      const userId = args.find(a => a.startsWith('--user='))?.split('=')[1];
+      if (!userId) {
+        console.error('Conversations seed requires --user=<userId> (each account has its own content).');
+        process.exit(1);
+      }
       const convCount = parseInt(args[2]) || args[1] ? parseInt(args[1]) : 30;
-      await seedConversations(mode === 'all' ? 30 : convCount);
+      await seedConversations(userId, mode === 'all' ? 30 : convCount);
     }
 
     console.log('Seeding complete!');

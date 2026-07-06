@@ -8,6 +8,7 @@ export interface IListeningQuestion {
 }
 
 export interface IListeningExercise extends Document {
+  userId: mongoose.Types.ObjectId;
   title: string;
   topic: string;
   level: string;
@@ -23,6 +24,7 @@ export interface IListeningExercise extends Document {
 }
 
 const listeningExerciseSchema = new Schema<IListeningExercise>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   title: { type: String, required: true },
   topic: { type: String, required: true, index: true },
   level: { type: String, required: true, index: true },

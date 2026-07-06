@@ -24,7 +24,7 @@ export class ShadowingService {
     conversationId: string,
     sentenceIndex: number,
   ) {
-    const conversation = await Conversation.findById(conversationId);
+    const conversation = await Conversation.findOne({ _id: conversationId, userId });
     if (!conversation) throw new Error('Conversation not found');
 
     const sentence = conversation.dialogue[sentenceIndex];
