@@ -1,4 +1,4 @@
-import { aiService } from './ai.service';
+import { aiService, ChunkCallback } from './ai.service';
 import { Quiz, IQuizQuestion } from '../models/Quiz';
 
 const QUIZ_SYSTEM_PROMPT = `You are an English proficiency test designer. Create a comprehensive quiz.
@@ -39,6 +39,7 @@ export class QuizService {
     level: string = 'A1',
     questionCount: number = 10,
     topic?: string,
+    onChunk?: ChunkCallback,
   ) {
     let levelInstruction = level;
     if (type === 'placement') {
@@ -55,7 +56,7 @@ ${type === 'placement' ? 'Start with A1 questions and progressively increase dif
 ${type === 'achievement' ? `Focus on ${level} level topics and skills.` : ''}
 ${!topic && category !== 'mixed' ? `Focus only on ${category} questions.` : ''}`;
 
-    const data = await aiService.generateJSON<any>(QUIZ_SYSTEM_PROMPT, userPrompt, 12288);
+    const data = await aiService.generateJSON<any>(QUIZ_SYSTEM_PROMPT, userPrompt, 12288, onChunk);
 
     const quiz = await Quiz.create({
       userId,

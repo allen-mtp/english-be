@@ -6,39 +6,43 @@ import { shadowingService } from '../services/shadowing.service';
 import { LearningLog } from '../models/LearningLog';
 import { calculateXP } from '../services/xp.service';
 import { updateStreak } from '../services/streak.service';
+import { withAIStream } from '../utils/ai-stream-response';
 
 export async function scoreShadowing(req: Request, res: Response): Promise<void> {
-  try {
-    const { conversationId, sentenceIndex } = req.body;
-    const audioFile = req.file;
+  const { conversationId, sentenceIndex } = req.body;
+  const audioFile = req.file;
 
-    if (!conversationId || sentenceIndex === undefined || !audioFile) {
-      res.status(400).json({ error: 'conversationId, sentenceIndex, and audio file are required' });
-      return;
-    }
-
-    const log = await shadowingService.score(
-      getUserId(req),
-      audioFile.buffer,
-      conversationId,
-      parseInt(sentenceIndex),
-    );
-    await updateStreak(getUserId(req));
-
-    await LearningLog.create({
-      userId: getUserId(req),
-      date: new Date(),
-      type: 'SHADOWING',
-      durationMinutes: 1,
-      xpEarned: calculateXP('SHADOWING'),
-      details: { conversationId, score: log.overallScore },
-    });
-
-    res.status(201).json({ log });
-  } catch (error: any) {
-    console.error('scoreShadowing error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+  if (!conversationId || sentenceIndex === undefined || !audioFile) {
+    res.status(400).json({ error: 'conversationId, sentenceIndex, and audio file are required' });
+    return;
   }
+
+  await withAIStream(
+    res,
+    201,
+    async (emitChunk) => {
+      const log = await shadowingService.score(
+        getUserId(req),
+        audioFile.buffer,
+        conversationId,
+        parseInt(sentenceIndex, 10),
+        emitChunk,
+      );
+      await updateStreak(getUserId(req));
+
+      await LearningLog.create({
+        userId: getUserId(req),
+        date: new Date(),
+        type: 'SHADOWING',
+        durationMinutes: 1,
+        xpEarned: calculateXP('SHADOWING'),
+        details: { conversationId, score: log.overallScore },
+      });
+
+      return log;
+    },
+    (log) => ({ log }),
+  );
 }
 
 export async function getShadowingHistory(req: Request, res: Response): Promise<void> {

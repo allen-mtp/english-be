@@ -3,21 +3,21 @@ import { getUserId } from '../utils/auth-request';
 import { Conversation } from '../models/Conversation';
 import { conversationService } from '../services/conversation.service';
 import { parsePagination } from '../utils/pagination';
+import { withAIStream } from '../utils/ai-stream-response';
 
 export async function generateConversation(req: Request, res: Response): Promise<void> {
-  try {
-    const { topic, level, exchanges } = req.body;
-    if (!topic || !level) {
-      res.status(400).json({ error: 'topic and level are required' });
-      return;
-    }
-
-    const conversation = await conversationService.generate(getUserId(req), topic, level, exchanges);
-    res.status(201).json({ conversation });
-  } catch (error: any) {
-    console.error('generateConversation error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+  const { topic, level, exchanges } = req.body;
+  if (!topic || !level) {
+    res.status(400).json({ error: 'topic and level are required' });
+    return;
   }
+
+  await withAIStream(
+    res,
+    201,
+    async (emitChunk) => conversationService.generate(getUserId(req), topic, level, exchanges, emitChunk),
+    (conversation) => ({ conversation }),
+  );
 }
 
 export async function getConversations(req: Request, res: Response): Promise<void> {

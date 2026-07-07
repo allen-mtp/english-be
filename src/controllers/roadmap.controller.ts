@@ -5,41 +5,33 @@ import { LearningLog } from '../models/LearningLog';
 import { roadmapService, nextLevel } from '../services/roadmap.service';
 import { calculateXP } from '../services/xp.service';
 import { updateStreak } from '../services/streak.service';
+import { withAIStream } from '../utils/ai-stream-response';
 
 export async function generateRoadmap(req: Request, res: Response): Promise<void> {
-  try {
-    const { level, goal, dailyMinutes, topic } = req.body;
-    const userLevel = level || 'A1';
-    const userGoal = goal || 'communication';
-    const userMinutes = dailyMinutes || 30;
+  const { level, goal, dailyMinutes, topic } = req.body;
+  const userLevel = level || 'A1';
+  const userGoal = goal || 'communication';
+  const userMinutes = dailyMinutes || 30;
 
-    const activeRoadmap = await Roadmap.findOne({ userId: getUserId(req), isActive: true });
-    if (activeRoadmap && !activeRoadmap.isCompleted) {
-      res.status(409).json({
-        error: `You have an active roadmap (Day ${activeRoadmap.currentDay}/${activeRoadmap.totalDays}). Complete it before starting a new one, or reset it.`,
-        roadmap: activeRoadmap,
-      });
-      return;
-    }
-
-    // Look up the most recent completed roadmap to determine next level
-    const lastCompleted = await Roadmap.findOne({ userId: getUserId(req), isCompleted: true })
-      .sort({ completedAt: -1 });
-    const nextLvl = lastCompleted ? nextLevel(lastCompleted.level) : userLevel;
-
-    const roadmap = await roadmapService.generate(getUserId(req), nextLvl, userGoal, userMinutes, topic);
-    res.status(201).json({ roadmap });
-  } catch (error: any) {
-    console.error('generateRoadmap error:', error);
-    const status = error?.status;
-    if (status === 503 || status === 429) {
-      res.status(503).json({
-        error: 'AI service is temporarily busy. Please wait a moment and try again.',
-      });
-      return;
-    }
-    res.status(500).json({ error: error.message || 'Internal server error' });
+  const activeRoadmap = await Roadmap.findOne({ userId: getUserId(req), isActive: true });
+  if (activeRoadmap && !activeRoadmap.isCompleted) {
+    res.status(409).json({
+      error: `You have an active roadmap (Day ${activeRoadmap.currentDay}/${activeRoadmap.totalDays}). Complete it before starting a new one, or reset it.`,
+      roadmap: activeRoadmap,
+    });
+    return;
   }
+
+  const lastCompleted = await Roadmap.findOne({ userId: getUserId(req), isCompleted: true })
+    .sort({ completedAt: -1 });
+  const nextLvl = lastCompleted ? nextLevel(lastCompleted.level) : userLevel;
+
+  await withAIStream(
+    res,
+    201,
+    async (emitChunk) => roadmapService.generate(getUserId(req), nextLvl, userGoal, userMinutes, topic, emitChunk),
+    (roadmap) => ({ roadmap }),
+  );
 }
 
 export async function getMyRoadmap(req: Request, res: Response): Promise<void> {

@@ -1,31 +1,34 @@
 import { Request, Response } from 'express';
 import { speakingScenarioService } from '../services/speaking-scenario.service';
+import { withAIStream } from '../utils/ai-stream-response';
 
 export async function getScenario(req: Request, res: Response): Promise<void> {
-  try {
-    const { level, topic } = req.query;
-    const scenario = await speakingScenarioService.generate(
+  const { level, topic } = req.query;
+
+  await withAIStream(
+    res,
+    200,
+    async (emitChunk) => speakingScenarioService.generate(
       (level as string) || 'B1',
       topic as string,
-    );
-    res.json({ scenario });
-  } catch (error: any) {
-    console.error('getScenario error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
+      emitChunk,
+    ),
+    (scenario) => ({ scenario }),
+  );
 }
 
 export async function getVariations(req: Request, res: Response): Promise<void> {
-  try {
-    const { level, topic, count } = req.query;
-    const variations = await speakingScenarioService.generateVariations(
+  const { level, topic, count } = req.query;
+
+  await withAIStream(
+    res,
+    200,
+    async (emitChunk) => speakingScenarioService.generateVariations(
       (level as string) || 'B1',
       (topic as string) || 'daily-life',
-      parseInt((count as string) || '3'),
-    );
-    res.json({ variations });
-  } catch (error: any) {
-    console.error('getVariations error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
+      parseInt((count as string) || '3', 10),
+      emitChunk,
+    ),
+    (variations) => ({ variations }),
+  );
 }

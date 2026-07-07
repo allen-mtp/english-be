@@ -6,16 +6,17 @@ import { listeningService } from '../services/listening.service';
 import { LearningLog } from '../models/LearningLog';
 import { calculateXP } from '../services/xp.service';
 import { updateStreak } from '../services/streak.service';
+import { withAIStream } from '../utils/ai-stream-response';
 
 export async function generateExercise(req: Request, res: Response): Promise<void> {
-  try {
-    const { level, topic, type } = req.body;
-    const exercise = await listeningService.generate(getUserId(req), level || 'B1', topic, type);
-    res.status(201).json({ exercise });
-  } catch (error: any) {
-    console.error('generateExercise error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
+  const { level, topic, type } = req.body;
+
+  await withAIStream(
+    res,
+    201,
+    async (emitChunk) => listeningService.generate(getUserId(req), level || 'B1', topic, type, emitChunk),
+    (exercise) => ({ exercise }),
+  );
 }
 
 export async function getExercises(req: Request, res: Response): Promise<void> {

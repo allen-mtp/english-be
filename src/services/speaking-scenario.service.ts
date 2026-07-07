@@ -1,4 +1,4 @@
-import { aiService } from './ai.service';
+import { aiService, ChunkCallback } from './ai.service';
 
 const SCENARIO_SYSTEM_PROMPT = `You are an English speaking practice designer. Create a daily speaking scenario for the learner.
 Return ONLY valid JSON (no markdown, no code block):
@@ -25,7 +25,7 @@ const TOPICS = [
 ];
 
 export class SpeakingScenarioService {
-  async generate(level: string = 'A1', topic?: string) {
+  async generate(level: string = 'A1', topic?: string, onChunk?: ChunkCallback) {
     const chosenTopic = topic || TOPICS[Math.floor(Math.random() * TOPICS.length)];
 
     const userPrompt = `Create a speaking practice scenario.
@@ -34,16 +34,16 @@ Topic area: ${chosenTopic}
 
 Make it realistic and practical. The user will practice speaking in this situation.`;
 
-    const data = await aiService.generateJSON<any>(SCENARIO_SYSTEM_PROMPT, userPrompt, 8192);
+    const data = await aiService.generateJSON<any>(SCENARIO_SYSTEM_PROMPT, userPrompt, 8192, onChunk);
 
     return data;
   }
 
-  async generateVariations(level: string, topic: string, count: number = 3) {
+  async generateVariations(level: string, topic: string, count: number = 3, onChunk?: ChunkCallback) {
     const variations = [];
     for (let i = 0; i < count; i++) {
       try {
-        const scenario = await this.generate(level, topic);
+        const scenario = await this.generate(level, topic, onChunk);
         variations.push(scenario);
       } catch (error) {
         console.error(`Failed to generate variation ${i + 1}:`, error);

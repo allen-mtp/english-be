@@ -1,5 +1,6 @@
-import { aiService } from './ai.service';
+import { aiService, ChunkCallback } from './ai.service';
 import { ListeningExercise } from '../models/Listening';
+import { normalizeTopic } from '../utils/topic';
 
 const LISTENING_SYSTEM_PROMPT = `You are an English listening exercise designer. Create a listening exercise for English learners.
 Return ONLY valid JSON (no markdown, no code block):
@@ -31,24 +32,24 @@ const TOPICS = ['travel', 'food', 'work', 'shopping', 'health', 'education', 'ne
 const TYPES = ['dialogue', 'monologue', 'story', 'news', 'announcement', 'interview'];
 
 export class ListeningService {
-  async generate(userId: string, level: string = 'A1', topic?: string, type?: string) {
-    const chosenTopic = topic || TOPICS[Math.floor(Math.random() * TOPICS.length)];
+  async generate(userId: string, level: string = 'A1', topic?: string, type?: string, onChunk?: ChunkCallback) {
+    const chosenTopic = normalizeTopic(topic) || TOPICS[Math.floor(Math.random() * TOPICS.length)];
     const chosenType = type || TYPES[Math.floor(Math.random() * TYPES.length)];
 
     const userPrompt = `Create a listening exercise.
-Level: ${level}
+Level: ${level} — content MUST match this exact CEFR level.
 Topic: ${chosenTopic}
 Type: ${chosenType}
 
 Make it engaging and practical.`;
 
-    const data = await aiService.generateJSON<any>(LISTENING_SYSTEM_PROMPT, userPrompt, 8192);
+    const data = await aiService.generateJSON<any>(LISTENING_SYSTEM_PROMPT, userPrompt, 8192, onChunk);
 
     const exercise = await ListeningExercise.create({
       userId,
       title: data.title,
-      topic: data.topic || chosenTopic,
-      level: data.level || level,
+      topic: normalizeTopic(data.topic) || normalizeTopic(chosenTopic) || chosenTopic,
+      level,
       type: data.type || chosenType,
       transcript: data.transcript,
       translation: data.translation,

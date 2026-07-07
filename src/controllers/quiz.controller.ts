@@ -7,25 +7,25 @@ import { LearningLog } from '../models/LearningLog';
 import { User } from '../models/User';
 import { calculateXP } from '../services/xp.service';
 import { updateStreak } from '../services/streak.service';
+import { withAIStream } from '../utils/ai-stream-response';
 
 export async function generateQuiz(req: Request, res: Response): Promise<void> {
-  try {
-    const { type = 'practice', category = 'mixed', level = 'A1', questionCount = 10, topic } = req.body;
+  const { type = 'practice', category = 'mixed', level = 'A1', questionCount = 10, topic } = req.body;
 
-    const quiz = await quizService.generate(
+  await withAIStream(
+    res,
+    201,
+    async (emitChunk) => quizService.generate(
       getUserId(req),
       type,
       category,
       level,
       questionCount,
       topic,
-    );
-
-    res.status(201).json({ quiz });
-  } catch (error: any) {
-    console.error('generateQuiz error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
+      emitChunk,
+    ),
+    (quiz) => ({ quiz }),
+  );
 }
 
 export async function getQuizzes(req: Request, res: Response): Promise<void> {

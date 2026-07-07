@@ -1,4 +1,4 @@
-import { aiService } from './ai.service';
+import { aiService, ChunkCallback } from './ai.service';
 import { Roadmap, IDailyLesson } from '../models/Roadmap';
 
 const ROADMAP_BATCH_SIZE = 5;
@@ -52,6 +52,7 @@ export class RoadmapService {
     endDay: number,
     topic?: string,
     previousLessons: IDailyLesson[] = [],
+    onChunk?: ChunkCallback,
   ): Promise<IDailyLesson[]> {
     const dayCount = endDay - startDay + 1;
     const prevContext = previousLessons.length > 0
@@ -63,7 +64,7 @@ ${topic ? `Focus area / interest: "${topic}" — tailor vocabulary, conversation
 Create days ${startDay} to ${endDay} of a ${TOTAL_DAYS}-day learning roadmap.${prevContext}
 Return exactly ${dayCount} day objects with day numbers ${startDay} through ${endDay}.`;
 
-    const lessons = await aiService.generateJSON<IDailyLesson[]>(ROADMAP_SYSTEM_PROMPT, userPrompt, 16384);
+    const lessons = await aiService.generateJSON<IDailyLesson[]>(ROADMAP_SYSTEM_PROMPT, userPrompt, 16384, onChunk);
 
     if (!Array.isArray(lessons) || lessons.length === 0) {
       throw new Error(`AI returned invalid roadmap for days ${startDay}-${endDay}`);
@@ -72,7 +73,7 @@ Return exactly ${dayCount} day objects with day numbers ${startDay} through ${en
     return lessons;
   }
 
-  async generate(userId: string, level: string, goal: string, dailyMinutes: number, topic?: string) {
+  async generate(userId: string, level: string, goal: string, dailyMinutes: number, topic?: string, onChunk?: ChunkCallback) {
     const lessons: IDailyLesson[] = [];
 
     for (let startDay = 1; startDay <= TOTAL_DAYS; startDay += ROADMAP_BATCH_SIZE) {
@@ -80,7 +81,7 @@ Return exactly ${dayCount} day objects with day numbers ${startDay} through ${en
       if (startDay > 1) {
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
-      const batch = await this.generateLessonBatch(level, goal, dailyMinutes, startDay, endDay, topic, lessons);
+      const batch = await this.generateLessonBatch(level, goal, dailyMinutes, startDay, endDay, topic, lessons, onChunk);
       lessons.push(...batch);
     }
 

@@ -6,17 +6,20 @@ import { grammarService } from '../services/grammar.service';
 import { LearningLog } from '../models/LearningLog';
 import { calculateXP } from '../services/xp.service';
 import { updateStreak } from '../services/streak.service';
+import { withAIStream } from '../utils/ai-stream-response';
 
 export async function generateLesson(req: Request, res: Response): Promise<void> {
-  try {
-    const { topic, level, title } = req.body;
-    const lesson = await grammarService.generateLesson(getUserId(req), topic, level, title);
-    res.status(201).json({ lesson });
-  } catch (error: any) {
-    console.error('generateLesson error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
+  const { topic, level, title } = req.body;
+
+  await withAIStream(
+    res,
+    201,
+    async (emitChunk) => grammarService.generateLesson(getUserId(req), topic, level, title, emitChunk),
+    (lesson) => ({ lesson }),
+  );
 }
+
+import { normalizeTopic } from '../utils/topic';
 
 export async function getLessons(req: Request, res: Response): Promise<void> {
   try {
@@ -24,7 +27,7 @@ export async function getLessons(req: Request, res: Response): Promise<void> {
     const { page: pageNum, limit: limitNum, skip } = parsePagination(pagination as any);
 
     const filter: any = { userId: getUserId(req) };
-    if (topic) filter.topic = topic;
+    if (topic) filter.topic = normalizeTopic(topic as string) || topic;
     if (level) filter.level = level;
 
     const total = await GrammarLesson.countDocuments(filter);

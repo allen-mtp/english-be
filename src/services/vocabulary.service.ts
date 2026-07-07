@@ -1,4 +1,4 @@
-import { aiService } from './ai.service';
+import { aiService, ChunkCallback } from './ai.service';
 import { Vocabulary } from '../models/Vocabulary';
 import { UserVocabulary } from '../models/UserVocabulary';
 
@@ -36,9 +36,9 @@ export interface VocabularyInput {
 }
 
 export class VocabularyService {
-  async generateSingle(userId: string, word: string, topic?: string) {
+  async generateSingle(userId: string, word: string, topic?: string, onChunk?: ChunkCallback) {
     const userPrompt = `Generate vocabulary for the word: "${word}"${topic ? `\nContext/topic to relate examples and meaning to: "${topic}"` : ''}`;
-    const data = await aiService.generateJSON<VocabularyInput>(VOCABULARY_SYSTEM_PROMPT, userPrompt);
+    const data = await aiService.generateJSON<VocabularyInput>(VOCABULARY_SYSTEM_PROMPT, userPrompt, 8192, onChunk);
 
     const existing = await Vocabulary.findOne({ word: data.word });
     let vocabulary = existing;
@@ -54,9 +54,9 @@ export class VocabularyService {
     return vocabulary;
   }
 
-  async generateBatch(userId: string, words: string[], topic?: string) {
+  async generateBatch(userId: string, words: string[], topic?: string, onChunk?: ChunkCallback) {
     const userPrompt = `Generate vocabulary for these words: ${JSON.stringify(words)}${topic ? `\nContext/topic to relate examples and meanings to: "${topic}"` : ''}`;
-    const dataArray = await aiService.generateJSON<VocabularyInput[]>(VOCABULARY_SYSTEM_PROMPT, userPrompt);
+    const dataArray = await aiService.generateJSON<VocabularyInput[]>(VOCABULARY_SYSTEM_PROMPT, userPrompt, 8192, onChunk);
 
     const results = [];
     for (const item of dataArray) {

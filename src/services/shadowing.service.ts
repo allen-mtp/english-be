@@ -1,4 +1,4 @@
-import { aiService } from './ai.service';
+import { aiService, ChunkCallback } from './ai.service';
 import { ShadowingLog } from '../models/ShadowingLog';
 import { Conversation } from '../models/Conversation';
 
@@ -23,6 +23,7 @@ export class ShadowingService {
     audioBuffer: Buffer,
     conversationId: string,
     sentenceIndex: number,
+    onChunk?: ChunkCallback,
   ) {
     const conversation = await Conversation.findOne({ _id: conversationId, userId });
     if (!conversation) throw new Error('Conversation not found');
@@ -30,13 +31,13 @@ export class ShadowingService {
     const sentence = conversation.dialogue[sentenceIndex];
     if (!sentence) throw new Error('Invalid sentence index');
 
-    const userTranscript = await aiService.transcribeAudio(audioBuffer);
+    const userTranscript = await aiService.transcribeAudio(audioBuffer, onChunk);
 
     const userPrompt = `Original sentence: "${sentence.text}"
 User's transcribed speech: "${userTranscript}"
 Evaluate this shadowing practice.`;
 
-    const result = await aiService.generateJSON<any>(SHADOWING_SYSTEM_PROMPT, userPrompt);
+    const result = await aiService.generateJSON<any>(SHADOWING_SYSTEM_PROMPT, userPrompt, 8192, onChunk);
 
     const log = await ShadowingLog.create({
       userId,

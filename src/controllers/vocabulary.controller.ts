@@ -8,64 +8,69 @@ import { vocabularyService } from '../services/vocabulary.service';
 import { calculateSM2 } from '../services/srs.service';
 import { calculateXP } from '../services/xp.service';
 import { updateStreak } from '../services/streak.service';
+import { withAIStream } from '../utils/ai-stream-response';
 
 export async function generateVocabulary(req: Request, res: Response): Promise<void> {
-  try {
-    const { word, topic } = req.body;
-    if (!word) {
-      res.status(400).json({ error: 'Word is required' });
-      return;
-    }
-
-    const vocabulary = await vocabularyService.generateSingle(getUserId(req), word, topic);
-    await updateStreak(getUserId(req));
-
-    await LearningLog.create({
-      userId: getUserId(req),
-      date: new Date(),
-      type: 'VOCABULARY',
-      durationMinutes: 2,
-      xpEarned: calculateXP('NEW_WORD'),
-      details: { vocabularyIds: [vocabulary._id.toString()] },
-    });
-
-    res.status(201).json({ vocabulary });
-  } catch (error: any) {
-    console.error('generateVocabulary error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+  const { word, topic } = req.body;
+  if (!word) {
+    res.status(400).json({ error: 'Word is required' });
+    return;
   }
+
+  await withAIStream(
+    res,
+    201,
+    async (emitChunk) => {
+      const vocabulary = await vocabularyService.generateSingle(getUserId(req), word, topic, emitChunk);
+      await updateStreak(getUserId(req));
+
+      await LearningLog.create({
+        userId: getUserId(req),
+        date: new Date(),
+        type: 'VOCABULARY',
+        durationMinutes: 2,
+        xpEarned: calculateXP('NEW_WORD'),
+        details: { vocabularyIds: [vocabulary._id.toString()] },
+      });
+
+      return vocabulary;
+    },
+    (vocabulary) => ({ vocabulary }),
+  );
 }
 
 export async function generateBatchVocabularies(req: Request, res: Response): Promise<void> {
-  try {
-    const { words, topic } = req.body;
-    if (!Array.isArray(words) || words.length === 0) {
-      res.status(400).json({ error: 'Words array is required' });
-      return;
-    }
-    if (words.length > 20) {
-      res.status(400).json({ error: 'Maximum 20 words per batch' });
-      return;
-    }
-
-    const vocabularies = await vocabularyService.generateBatch(getUserId(req), words, topic);
-    await updateStreak(getUserId(req));
-
-    const xp = vocabularies.length * calculateXP('NEW_WORD');
-    await LearningLog.create({
-      userId: getUserId(req),
-      date: new Date(),
-      type: 'VOCABULARY',
-      durationMinutes: Math.ceil(vocabularies.length * 2),
-      xpEarned: xp,
-      details: { vocabularyIds: vocabularies.map((v: any) => v._id.toString()) },
-    });
-
-    res.status(201).json({ vocabularies });
-  } catch (error: any) {
-    console.error('generateBatchVocabularies error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+  const { words, topic } = req.body;
+  if (!Array.isArray(words) || words.length === 0) {
+    res.status(400).json({ error: 'Words array is required' });
+    return;
   }
+  if (words.length > 20) {
+    res.status(400).json({ error: 'Maximum 20 words per batch' });
+    return;
+  }
+
+  await withAIStream(
+    res,
+    201,
+    async (emitChunk) => {
+      const vocabularies = await vocabularyService.generateBatch(getUserId(req), words, topic, emitChunk);
+      await updateStreak(getUserId(req));
+
+      const xp = vocabularies.length * calculateXP('NEW_WORD');
+      await LearningLog.create({
+        userId: getUserId(req),
+        date: new Date(),
+        type: 'VOCABULARY',
+        durationMinutes: Math.ceil(vocabularies.length * 2),
+        xpEarned: xp,
+        details: { vocabularyIds: vocabularies.map((v: any) => v._id.toString()) },
+      });
+
+      return vocabularies;
+    },
+    (vocabularies) => ({ vocabularies }),
+  );
 }
 
 export async function getMyVocabularies(req: Request, res: Response): Promise<void> {

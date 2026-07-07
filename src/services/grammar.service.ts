@@ -1,5 +1,6 @@
-import { aiService } from './ai.service';
-import { GrammarLesson, IGrammarLesson, IGrammarExercise } from '../models/Grammar';
+import { aiService, ChunkCallback } from './ai.service';
+import { GrammarLesson } from '../models/Grammar';
+import { normalizeTopic } from '../utils/topic';
 
 const GRAMMAR_SYSTEM_PROMPT = `You are an expert English grammar teacher. Create a comprehensive grammar lesson for English learners.
 Return ONLY valid JSON (no markdown, no code block):
@@ -44,35 +45,48 @@ const GRAMMAR_TOPICS = [
 ];
 
 export class GrammarService {
-  async generateLesson(userId: string, topic?: string, level?: string, title?: string) {
-    let chosenTopic = topic;
-    let chosenTitle = title;
-    let chosenLevel = level;
+  async generateLesson(userId: string, topic?: string, level?: string, title?: string, onChunk?: ChunkCallback) {
+    const chosenLevel = level || 'A1';
+    const chosenTopic = normalizeTopic(topic);
+    let chosenTitle = title?.trim() || undefined;
 
     if (!chosenTopic) {
       const random = GRAMMAR_TOPICS[Math.floor(Math.random() * GRAMMAR_TOPICS.length)];
-      chosenTopic = random.topic;
-      chosenTitle = random.title;
-      chosenLevel = level || random.level;
-    }
-
-    // Check if this user already has this lesson
-    const existing = await GrammarLesson.findOne({ userId, topic: chosenTopic, title: chosenTitle });
-    if (existing) return existing;
-
-    const userPrompt = `Create a grammar lesson${chosenTitle ? ` about "${chosenTitle}"` : ''}.
-Topic category: ${chosenTopic}
-Level: ${chosenLevel || 'A1'}
+      const userPrompt = `Create a grammar lesson about "${random.title}".
+Topic category: ${random.topic}
+CEFR Level: ${chosenLevel} — all content and exercises MUST match this exact level.
 
 Make it comprehensive with 6-8 exercises.`;
 
-    const data = await aiService.generateJSON<any>(GRAMMAR_SYSTEM_PROMPT, userPrompt, 8192);
+      const data = await aiService.generateJSON<any>(GRAMMAR_SYSTEM_PROMPT, userPrompt, 8192, onChunk);
 
-    const lesson = await GrammarLesson.create({
+      return GrammarLesson.create({
+        userId,
+        title: data.title || random.title,
+        topic: normalizeTopic(data.topic) || random.topic,
+        level: chosenLevel,
+        explanation: data.explanation,
+        explanationVi: data.explanationVi,
+        examples: data.examples || [],
+        rules: data.rules || [],
+        commonMistakes: data.commonMistakes || [],
+        exercises: data.exercises || [],
+      });
+    }
+
+    const userPrompt = `Create a grammar lesson focused on the topic "${chosenTopic}"${chosenTitle ? ` (title idea: "${chosenTitle}")` : ''}.
+Topic category: ${chosenTopic}
+CEFR Level: ${chosenLevel} — all content and exercises MUST match this exact level. Do NOT use a different level.
+
+Make it comprehensive with 6-8 exercises.`;
+
+    const data = await aiService.generateJSON<any>(GRAMMAR_SYSTEM_PROMPT, userPrompt, 8192, onChunk);
+
+    return GrammarLesson.create({
       userId,
-      title: data.title || chosenTitle,
-      topic: data.topic || chosenTopic,
-      level: data.level || chosenLevel || 'A1',
+      title: data.title || chosenTitle || `${chosenTopic} (${chosenLevel})`,
+      topic: chosenTopic,
+      level: chosenLevel,
       explanation: data.explanation,
       explanationVi: data.explanationVi,
       examples: data.examples || [],
@@ -80,8 +94,6 @@ Make it comprehensive with 6-8 exercises.`;
       commonMistakes: data.commonMistakes || [],
       exercises: data.exercises || [],
     });
-
-    return lesson;
   }
 
   async generateBatch(userId: string, topic: string, level: string, count: number = 5) {

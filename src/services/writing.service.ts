@@ -1,4 +1,4 @@
-import { aiService } from './ai.service';
+import { aiService, ChunkCallback } from './ai.service';
 import { WritingSubmission } from '../models/Writing';
 
 const PROMPT_SYSTEM = `You are an English writing teacher. Generate a writing prompt for the learner.
@@ -40,7 +40,7 @@ Scoring criteria:
 Be specific and constructive. Vietnamese explanations.`;
 
 export class WritingService {
-  async generatePrompt(level: string = 'A1', type?: string, topic?: string) {
+  async generatePrompt(level: string = 'A1', type?: string, topic?: string, onChunk?: ChunkCallback) {
     const types = ['email', 'essay', 'story', 'description', 'letter', 'report', 'review'];
     const chosenType = type || types[Math.floor(Math.random() * types.length)];
 
@@ -49,10 +49,10 @@ Level: ${level}
 Type: ${chosenType}
 ${topic ? `Topic: ${topic}` : 'Choose an interesting, practical topic.'}`;
 
-    return aiService.generateJSON<any>(PROMPT_SYSTEM, userPrompt);
+    return aiService.generateJSON<any>(PROMPT_SYSTEM, userPrompt, 8192, onChunk);
   }
 
-  async evaluate(userId: string, promptData: any, userText: string) {
+  async evaluate(userId: string, promptData: any, userText: string, onChunk?: ChunkCallback) {
     const wordCount = userText.trim().split(/\s+/).length;
 
     const userPrompt = `Writing prompt: "${promptData.prompt}"
@@ -67,7 +67,7 @@ ${userText}
 
 Evaluate this writing submission.`;
 
-    const feedback = await aiService.generateJSON<any>(FEEDBACK_SYSTEM, userPrompt, 8192);
+    const feedback = await aiService.generateJSON<any>(FEEDBACK_SYSTEM, userPrompt, 8192, onChunk);
 
     const submission = await WritingSubmission.create({
       userId,

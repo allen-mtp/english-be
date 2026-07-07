@@ -1,4 +1,4 @@
-import { aiService } from './ai.service';
+import { aiService, ChunkCallback } from './ai.service';
 import { PronunciationLog } from '../models/PronunciationLog';
 
 const PRONUNCIATION_SYSTEM_PROMPT = `You are an English pronunciation coach. Analyze the pronunciation quality.
@@ -31,7 +31,7 @@ Each sentence must include a Vietnamese translation.
 Vary the sentence structures and vocabulary.`;
 
 export class PronunciationService {
-  async generateSentences(topic: string, level: string): Promise<{ topic: string; level: string; sentences: { text: string; translation: string }[] }> {
+  async generateSentences(topic: string, level: string, onChunk?: ChunkCallback): Promise<{ topic: string; level: string; sentences: { text: string; translation: string }[] }> {
     const userPrompt = `Topic: "${topic}"
 Level: "${level}"
 Generate 5 sentences for pronunciation practice.`;
@@ -39,6 +39,8 @@ Generate 5 sentences for pronunciation practice.`;
     const result = await aiService.generateJSON<{ topic: string; level: string; sentences: { text: string; translation: string }[] }>(
       GENERATE_SENTENCES_SYSTEM_PROMPT,
       userPrompt,
+      8192,
+      onChunk,
     );
 
     return {
@@ -52,14 +54,15 @@ Generate 5 sentences for pronunciation practice.`;
     userId: string,
     audioBuffer: Buffer,
     originalText: string,
+    onChunk?: ChunkCallback,
   ) {
-    const transcribedText = await aiService.transcribeAudio(audioBuffer);
+    const transcribedText = await aiService.transcribeAudio(audioBuffer, onChunk);
 
     const userPrompt = `Original text: "${originalText}"
 User's transcribed speech: "${transcribedText}"
 Analyze the pronunciation quality.`;
 
-    const result = await aiService.generateJSON<any>(PRONUNCIATION_SYSTEM_PROMPT, userPrompt);
+    const result = await aiService.generateJSON<any>(PRONUNCIATION_SYSTEM_PROMPT, userPrompt, 8192, onChunk);
 
     const log = await PronunciationLog.create({
       userId,

@@ -1,4 +1,4 @@
-import { aiService } from './ai.service';
+import { aiService, ChunkCallback } from './ai.service';
 import { RolePlayConversation } from '../models/RolePlayConversation';
 
 const SCENARIO_PROMPT = `You are an English teacher creating role-play scenarios for communication practice.
@@ -41,7 +41,7 @@ export interface RolePlayMessage {
 }
 
 export class RoleplayService {
-  async generateScenario(topic?: string, level?: string) {
+  async generateScenario(topic?: string, level?: string, onChunk?: ChunkCallback) {
     const topicList = ['ordering food', 'shopping', 'airport check-in', 'hotel booking', 'doctor visit',
       'job interview', 'making friends', 'asking directions', 'phone call', 'restaurant reservation',
       'small talk', 'at the bank', 'at the post office', 'ordering takeout', 'meeting someone new'];
@@ -49,10 +49,10 @@ export class RoleplayService {
 
     const userPrompt = `Generate a role-play scenario${topic ? ` about "${topic}"` : ''}.${level ? ` Level: ${level}.` : ''} Make it practical and realistic.`;
 
-    return await aiService.generateJSON<any>(SCENARIO_PROMPT, userPrompt);
+    return await aiService.generateJSON<any>(SCENARIO_PROMPT, userPrompt, 8192, onChunk);
   }
 
-  async chat(userId: string, conversationId: string, userMessage: string) {
+  async chat(userId: string, conversationId: string, userMessage: string, onChunk?: ChunkCallback) {
     const conv = await RolePlayConversation.findOne({ _id: conversationId, userId });
     if (!conv) throw new Error('Conversation not found');
 
@@ -74,7 +74,7 @@ User just said: "${userMessage}"
 
 Reply naturally as ${conv.aiRole}.`;
 
-    const response = await aiService.generateText(fullPrompt, userPrompt, 1024);
+    const response = await aiService.generateText(fullPrompt, userPrompt, 1024, onChunk);
 
     let replyText = response.trim();
     let corrections = '';
@@ -130,7 +130,7 @@ Reply naturally as ${conv.aiRole}.`;
     return aiMsg;
   }
 
-  async summarizeConversation(userId: string, conversationId: string) {
+  async summarizeConversation(userId: string, conversationId: string, onChunk?: ChunkCallback) {
     const conv = await RolePlayConversation.findOne({ _id: conversationId, userId });
     if (!conv) throw new Error('Conversation not found');
 
@@ -151,7 +151,7 @@ Return ONLY a JSON object:
   "vocabularyUsed": [string] (notable vocabulary the user used)
 }`;
 
-    const result = await aiService.generateJSON<any>(summaryPrompt, summaryPrompt.replace('You are an English teacher. Return ONLY a JSON object:', 'Summarize this role-play conversation and provide feedback.\n\nReturn ONLY a JSON object:'), 4096);
+    const result = await aiService.generateJSON<any>(summaryPrompt, summaryPrompt.replace('You are an English teacher. Return ONLY a JSON object:', 'Summarize this role-play conversation and provide feedback.\n\nReturn ONLY a JSON object:'), 4096, onChunk);
 
     conv.summary = result.summary || result.feedback || '';
     conv.overallScore = result.score || undefined;

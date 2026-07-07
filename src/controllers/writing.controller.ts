@@ -6,56 +6,60 @@ import { writingService } from '../services/writing.service';
 import { LearningLog } from '../models/LearningLog';
 import { calculateXP } from '../services/xp.service';
 import { updateStreak } from '../services/streak.service';
+import { withAIStream } from '../utils/ai-stream-response';
 
 export async function getPrompt(req: Request, res: Response): Promise<void> {
-  try {
-    const { level, type, topic } = req.query;
-    const prompt = await writingService.generatePrompt(
+  const { level, type, topic } = req.query;
+
+  await withAIStream(
+    res,
+    200,
+    async (emitChunk) => writingService.generatePrompt(
       (level as string) || 'B1',
       type as string,
       topic as string,
-    );
-    res.json({ prompt });
-  } catch (error: any) {
-    console.error('getPrompt error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
+      emitChunk,
+    ),
+    (prompt) => ({ prompt }),
+  );
 }
 
 export async function submitWriting(req: Request, res: Response): Promise<void> {
-  try {
-    const { prompt, promptType, level, topic, text } = req.body;
+  const { prompt, promptType, level, topic, text } = req.body;
 
-    if (!prompt || !text || !text.trim()) {
-      res.status(400).json({ error: 'prompt and text are required' });
-      return;
-    }
-
-    if (text.trim().split(/\s+/).length < 20) {
-      res.status(400).json({ error: 'Please write at least 20 words' });
-      return;
-    }
-
-    const promptData = { prompt, promptType: promptType || 'essay', level: level || 'B1', topic: topic || 'general' };
-    const submission = await writingService.evaluate(getUserId(req), promptData, text);
-
-    await updateStreak(getUserId(req));
-    const xp = calculateXP('WRITING', submission.feedback.overallScore / 20);
-
-    await LearningLog.create({
-      userId: getUserId(req),
-      date: new Date(),
-      type: 'REVIEW',
-      durationMinutes: Math.ceil(submission.wordCount / 30),
-      xpEarned: xp,
-      details: { score: submission.feedback.overallScore },
-    });
-
-    res.status(201).json({ submission, xpEarned: xp });
-  } catch (error: any) {
-    console.error('submitWriting error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+  if (!prompt || !text || !text.trim()) {
+    res.status(400).json({ error: 'prompt and text are required' });
+    return;
   }
+
+  if (text.trim().split(/\s+/).length < 20) {
+    res.status(400).json({ error: 'Please write at least 20 words' });
+    return;
+  }
+
+  const promptData = { prompt, promptType: promptType || 'essay', level: level || 'B1', topic: topic || 'general' };
+
+  await withAIStream(
+    res,
+    201,
+    async (emitChunk) => {
+      const submission = await writingService.evaluate(getUserId(req), promptData, text, emitChunk);
+      await updateStreak(getUserId(req));
+      const xp = calculateXP('WRITING', submission.feedback.overallScore / 20);
+
+      await LearningLog.create({
+        userId: getUserId(req),
+        date: new Date(),
+        type: 'REVIEW',
+        durationMinutes: Math.ceil(submission.wordCount / 30),
+        xpEarned: xp,
+        details: { score: submission.feedback.overallScore },
+      });
+
+      return { submission, xpEarned: xp };
+    },
+    (result) => result,
+  );
 }
 
 export async function getHistory(req: Request, res: Response): Promise<void> {
