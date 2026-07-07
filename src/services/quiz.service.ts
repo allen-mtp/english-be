@@ -65,6 +65,8 @@ ${!topic && category !== 'mixed' ? `Focus only on ${category} questions.` : ''}`
       category,
       questions: data.questions || [],
       totalQuestions: (data.questions || []).length,
+      userAnswers: [],
+      answeredCount: 0,
       completed: false,
       startedAt: new Date(),
       timeLimit: type === 'placement' ? 30 : 15,
@@ -105,6 +107,19 @@ ${!topic && category !== 'mixed' ? `Focus only on ${category} questions.` : ''}`
       throw new Error('Quiz has no questions');
     }
     const score = Math.round((correctCount / quiz.questions.length) * 100);
+    const sanitizedAnswers = quiz.questions.map((question, index) => {
+      const answer = answers[index];
+      if (answer === undefined || answer === null || answer === -1) return null;
+      if (question.type === 'fill-blank') {
+        const normalized = String(answer).trim();
+        return normalized.length > 0 ? normalized : null;
+      }
+      return Number.isNaN(Number(answer)) ? null : Number(answer);
+    });
+    const answeredCount = sanitizedAnswers.filter((ans) => ans !== null).length;
+
+    quiz.userAnswers = sanitizedAnswers;
+    quiz.answeredCount = answeredCount;
     quiz.score = score;
     quiz.correctCount = correctCount;
     quiz.completed = true;
@@ -123,6 +138,31 @@ ${!topic && category !== 'mixed' ? `Focus only on ${category} questions.` : ''}`
       totalQuestions: quiz.questions.length,
       results,
       determinedLevel,
+    };
+  }
+
+  async saveProgress(userId: string, quizId: string, answers: Array<number | string | null>) {
+    const quiz = await Quiz.findOne({ _id: quizId, userId, completed: false });
+    if (!quiz) throw new Error('Quiz not found or already completed');
+
+    const sanitizedAnswers = quiz.questions.map((question, index) => {
+      const answer = answers[index];
+      if (answer === undefined || answer === null || answer === -1) return null;
+      if (question.type === 'fill-blank') {
+        const normalized = String(answer).trim();
+        return normalized.length > 0 ? normalized : null;
+      }
+      return Number.isNaN(Number(answer)) ? null : Number(answer);
+    });
+
+    quiz.userAnswers = sanitizedAnswers;
+    quiz.answeredCount = sanitizedAnswers.filter((ans) => ans !== null).length;
+    await quiz.save();
+
+    return {
+      answeredCount: quiz.answeredCount,
+      totalQuestions: quiz.totalQuestions,
+      completed: quiz.completed,
     };
   }
 

@@ -39,7 +39,7 @@ export async function getQuizzes(req: Request, res: Response): Promise<void> {
 
     const total = await Quiz.countDocuments(filter);
     const quizzes = await Quiz.find(filter)
-      .select('title level type category totalQuestions score correctCount completed createdAt completedAt')
+      .select('title level type category totalQuestions answeredCount score correctCount completed createdAt completedAt')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -101,6 +101,24 @@ export async function submitQuiz(req: Request, res: Response): Promise<void> {
     res.json({ ...result, xpEarned: xp });
   } catch (error: any) {
     console.error('submitQuiz error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+}
+
+export async function saveQuizProgress(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { answers } = req.body;
+
+    if (!Array.isArray(answers)) {
+      res.status(400).json({ error: 'answers array is required' });
+      return;
+    }
+
+    const result = await quizService.saveProgress(getUserId(req), id, answers);
+    res.json(result);
+  } catch (error: any) {
+    console.error('saveQuizProgress error:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }

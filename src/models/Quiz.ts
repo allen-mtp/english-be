@@ -19,6 +19,8 @@ export interface IQuiz extends Document {
   category: 'mixed' | 'vocabulary' | 'grammar' | 'listening' | 'reading';
   questions: IQuizQuestion[];
   totalQuestions: number;
+  userAnswers: Array<number | string | null>;
+  answeredCount: number;
   score?: number;
   correctCount?: number;
   completed: boolean;
@@ -45,6 +47,8 @@ const quizSchema = new Schema<IQuiz>({
     difficulty: { type: Number, default: 1 },
   }],
   totalQuestions: { type: Number, required: true },
+  userAnswers: { type: [Schema.Types.Mixed], default: [] },
+  answeredCount: { type: Number, default: 0 },
   score: Number,
   correctCount: Number,
   completed: { type: Boolean, default: false },
