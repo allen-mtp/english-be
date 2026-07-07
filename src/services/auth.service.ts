@@ -133,8 +133,8 @@ export const authService = {
   setAccessTokenCookie(res: any, token: string): void {
     res.cookie(config.accessTokenCookie, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: config.accessTokenMaxAge,
       path: '/',
     });
@@ -143,15 +143,15 @@ export const authService = {
   setRefreshTokenCookie(res: any, token: string): void {
     res.cookie(config.refreshTokenCookie, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: config.refreshTokenMaxAge,
       path: '/',
     });
   },
 
   clearAuthCookies(res: any): void {
-    res.clearCookie(config.accessTokenCookie, { path: '/' });
-    res.clearCookie(config.refreshTokenCookie, { path: '/' });
+    res.clearCookie(config.accessTokenCookie, { path: '/', secure: true, sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' });
+    res.clearCookie(config.refreshTokenCookie, { path: '/', secure: true, sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' });
   },
 };

@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const config = {
-  port: process.env.PORT || 5000,
+  port: parseInt(process.env.PORT || '3005', 10),
   mongodbUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/english-learning',
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   geminiApiKey: process.env.GEMINI_API_KEY || '',

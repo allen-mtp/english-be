@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: english-ai-api
+    env: node
+    region: singapore
+    plan: free
+    nodeVersion: 20.x
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: REFRESH_TOKEN_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://english-ai.vercel.app
+      - key: REDIS_URL
+        value: redis://localhost:6379
+    autoDeploy: true
+    healthCheckPath: /api/health
