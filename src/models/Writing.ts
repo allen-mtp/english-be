@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IWritingSubmission extends Document {
   userId: mongoose.Types.ObjectId;
   prompt: string;
-  promptType: 'email' | 'essay' | 'story' | 'description' | 'letter' | 'report' | 'review';
+  promptType: string;
   level: string;
   topic: string;
   userText: string;
@@ -26,7 +26,7 @@ export interface IWritingSubmission extends Document {
 const writingSubmissionSchema = new Schema<IWritingSubmission>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   prompt: { type: String, required: true },
-  promptType: { type: String, enum: ['email', 'essay', 'story', 'description', 'letter', 'report', 'review'], required: true },
+  promptType: { type: String, required: true, maxlength: 100 },
   level: { type: String, required: true },
   topic: { type: String, required: true },
   userText: { type: String, required: true },

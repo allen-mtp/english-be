@@ -37,7 +37,12 @@ export async function submitWriting(req: Request, res: Response): Promise<void> 
     return;
   }
 
-  const promptData = { prompt, promptType: promptType || 'essay', level: level || 'B1', topic: topic || 'general' };
+  const promptData = {
+    prompt,
+    promptType: (promptType || 'essay').trim().slice(0, 100),
+    level: level || 'B1',
+    topic: topic || 'general',
+  };
 
   await withAIStream(
     res,

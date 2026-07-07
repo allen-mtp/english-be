@@ -1,18 +1,21 @@
 import { aiService, ChunkCallback } from './ai.service';
 import { WritingSubmission } from '../models/Writing';
 
+const DEFAULT_WRITING_TYPES = ['email', 'essay', 'story', 'description', 'letter', 'report', 'review'];
+
 const PROMPT_SYSTEM = `You are an English writing teacher. Generate a writing prompt for the learner.
 Return ONLY valid JSON (no markdown, no code block):
 {
   "prompt": string (the full writing prompt with clear instructions),
-  "promptType": "email" | "essay" | "story" | "description" | "letter" | "report" | "review",
+  "promptType": string (the writing format, e.g. "email", "essay", "blog post", "diary", "speech"),
   "level": string,
   "topic": string,
   "minWords": number,
   "maxWords": number,
   "tips": [string] (2-3 writing tips in Vietnamese)
 }
-Make prompts practical and useful for real-life English communication.`;
+Make prompts practical and useful for real-life English communication.
+If a specific writing type is requested, use that format exactly and set promptType to match it.`;
 
 const FEEDBACK_SYSTEM = `You are an expert English writing examiner. Evaluate the user's writing submission.
 Return ONLY valid JSON (no markdown, no code block):
@@ -41,15 +44,17 @@ Be specific and constructive. Vietnamese explanations.`;
 
 export class WritingService {
   async generatePrompt(level: string = 'A1', type?: string, topic?: string, onChunk?: ChunkCallback) {
-    const types = ['email', 'essay', 'story', 'description', 'letter', 'report', 'review'];
-    const chosenType = type || types[Math.floor(Math.random() * types.length)];
+    const customType = type?.trim().slice(0, 100);
+    const chosenType = customType || DEFAULT_WRITING_TYPES[Math.floor(Math.random() * DEFAULT_WRITING_TYPES.length)];
 
     const userPrompt = `Generate a writing prompt.
 Level: ${level}
-Type: ${chosenType}
-${topic ? `Topic: ${topic}` : 'Choose an interesting, practical topic.'}`;
+Writing type/format: ${chosenType}${customType ? ' (user requested this format)' : ' (pick randomly from common formats)'}
+${topic ? `Topic: ${topic}` : 'Choose an interesting, practical topic.'}
+Set promptType in your JSON response to: "${chosenType}"`;
 
-    return aiService.generateJSON<any>(PROMPT_SYSTEM, userPrompt, 8192, onChunk);
+    const data = await aiService.generateJSON<any>(PROMPT_SYSTEM, userPrompt, 8192, onChunk);
+    return { ...data, promptType: data.promptType?.trim() || chosenType };
   }
 
   async evaluate(userId: string, promptData: any, userText: string, onChunk?: ChunkCallback) {
