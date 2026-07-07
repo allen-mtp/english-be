@@ -3,7 +3,9 @@ import { config } from '../config';
 
 const genAI = new GoogleGenerativeAI(config.geminiApiKey);
 
-const textModel = 'gemini-2.5-flash';
+const PRIMARY_MODEL = 'gemini-2.5-flash';
+const FALLBACK_MODEL = 'gemini-2.5-flash-lite';
+const MODEL_CHAIN = [PRIMARY_MODEL, FALLBACK_MODEL];
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -39,18 +41,42 @@ async function withRetry<T>(
   throw lastError;
 }
 
+async function withModelFallback<T>(
+  label: string,
+  fn: (model: string) => Promise<T>,
+): Promise<T> {
+  let lastError: unknown;
+
+  for (let i = 0; i < MODEL_CHAIN.length; i++) {
+    const model = MODEL_CHAIN[i];
+    const maxRetries = i === 0 ? 2 : 4;
+
+    try {
+      return await withRetry(() => fn(model), `${label}[${model}]`, maxRetries);
+    } catch (error) {
+      lastError = error;
+      const nextModel = MODEL_CHAIN[i + 1];
+      if (nextModel && isRetryableApiError(error)) {
+        console.warn(`${label}: ${model} unavailable, falling back to ${nextModel}`);
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError;
+}
+
 export class AIService {
   async generateText(systemPrompt: string, userPrompt: string, maxOutputTokens: number = 4096): Promise<string> {
-    const model = genAI.getGenerativeModel({
-      model: textModel,
-      systemInstruction: systemPrompt,
-      generationConfig: { temperature: 0.7, maxOutputTokens },
+    const result = await withModelFallback('generateText', (model) => {
+      const generativeModel = genAI.getGenerativeModel({
+        model,
+        systemInstruction: systemPrompt,
+        generationConfig: { temperature: 0.7, maxOutputTokens },
+      });
+      return generativeModel.generateContent(userPrompt);
     });
-
-    const result = await withRetry(
-      () => model.generateContent(userPrompt),
-      'generateText',
-    );
     return result.response.text();
   }
 
@@ -60,23 +86,22 @@ export class AIService {
     maxOutputTokens: number = 8192,
     retries: number = 2,
   ): Promise<T> {
-    const model = genAI.getGenerativeModel({
-      model: textModel,
-      systemInstruction: systemPrompt,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens,
-        responseMimeType: 'application/json',
-      },
-    });
-
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
-      const result = await withRetry(
-        () => model.generateContent(userPrompt),
-        'generateJSON',
-      );
+      const result = await withModelFallback('generateJSON', (model) => {
+        const generativeModel = genAI.getGenerativeModel({
+          model,
+          systemInstruction: systemPrompt,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens,
+            responseMimeType: 'application/json',
+          },
+        });
+        return generativeModel.generateContent(userPrompt);
+      });
+
       const finishReason = result.response.candidates?.[0]?.finishReason;
       let text = result.response.text().trim();
 
@@ -116,15 +141,13 @@ export class AIService {
   }
 
   async transcribeAudio(audioBuffer: Buffer): Promise<string> {
-    const model = genAI.getGenerativeModel({ model: textModel });
-
-    const result = await withRetry(
-      () => model.generateContent([
+    const result = await withModelFallback('transcribeAudio', (model) => {
+      const generativeModel = genAI.getGenerativeModel({ model });
+      return generativeModel.generateContent([
         { text: 'Transcribe the following audio to English text. Return ONLY the transcribed text, nothing else.' },
         { inlineData: { mimeType: 'audio/webm', data: audioBuffer.toString('base64') } },
-      ]),
-      'transcribeAudio',
-    );
+      ]);
+    });
 
     return result.response.text().trim();
   }
